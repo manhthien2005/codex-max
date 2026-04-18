@@ -53,6 +53,64 @@ Repository này đóng vai trò như một lớp orchestration tập trung cho C
 
 ---
 
+## Cách hoạt động
+
+### Vòng đời request
+
+Mọi prompt từ người dùng đều đi qua một stack phân lớp trước khi tạo ra output:
+
+```
+User prompt
+    │
+    ├── [SessionStart hook] ──── nạp lại context plan từ PLANS.md
+    │
+    ├── [UserPromptSubmit hook] ─ inject active plan context vào prompt
+    │
+    ├── [AGENTS.md] ─────────── agent đọc operational contract:
+    │       └── xác định active repo
+    │       └── nạp skill task-intelligence (Phase PLAN)
+    │       └── quyết định: chạy trực tiếp hay spawn subagent
+    │
+    ├── [Intelligence Layers] ── tra cứu trước khi viết code:
+    │       └── MemPalace     → quyết định cũ, note kiến trúc
+    │       └── Semantic search → code liên quan theo concept (Qdrant + Ollama)
+    │       └── GitNexus      → symbol đích xác, call graph, blast radius
+    │
+    ├── [Skills / Agent roles] ─ Phase BUILD: nạp đúng skill hẹp nhất
+    │
+    ├── [PreToolUse hook] ───── kiểm tra từng tool call so với plan
+    │
+    ├── Code generation + edits
+    │
+    ├── [PostToolUse hook] ──── review tool output so với plan
+    │
+    └── [Stop hook] ────────── lưu session state, ghi MemPalace diary
+```
+
+### Các lớp Intelligence
+
+| Lớp | Vai trò | Tình huống dùng |
+|---|---|---|
+| **MemPalace** | Memory bền vững qua nhiều session | Tra cứu quyết định cũ, context kiến trúc |
+| **Qdrant Semantic** | Vector similarity search trên code | Tìm code liên quan theo ý định/concept |
+| **GitNexus** | Structural code graph (symbol, deps) | Lookup chính xác, phân tích mồi ảnh hưởng |
+| **Context7** | Tài liệu dự án/thư viện up-to-date | Đọc doc trước khi viết code phụ thuộc lib |
+| **GitHub MCP** | Truy cập PR/issue | Review PR, đọc context issue |
+
+### Bản đồ lưu trữ data
+
+| Data | Vị trí | Ghi chú |
+|---|---|---|
+| Semantic vector index | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index qua `mcp/semantic/index_health_system_repo.py` |
+| MemPalace drawers | `~/.mempalace/palace/chroma.sqlite3` | Không bị mất khi reboot, ~ChromaDB |
+| MemPalace knowledge graph | `~/.mempalace/palace/knowledge_graph.sqlite3` | Structured facts (chủ thể → vị ngữ → bổ ngữ) |
+| GitNexus graph | `<repo>/.gitnexus/` trên từng repo | 60–70 MB mỗi repo, gitignored ở repo |
+| GitNexus global registry | `~/.gitnexus/registry.json` | Chứa DS toàn bộ repo đã index |
+| ChromaDB ONNX model | `~/.cache/chroma/onnx_models/` | 166 MB, tải một lần |
+| Session hooks state | `./.sandbox/`, `./sessions/` | Chỉ chạy local, gitignored ở workspace |
+
+---
+
 ## Project Structure
 
 Workspace này được tổ chức quanh một số lớp lõi chính:
@@ -121,8 +179,8 @@ git clone https://github.com/ThienPhanNoLife/codex-workspace.git C:\Users\$env:U
 Select-String -Path "C:\Users\$env:USERNAME\.codex\config.toml" -Pattern "MrThien"
 # Sửa config.toml — thay mọi chỗ "MrThien" bằng tên người dùng Windows của bạn
 
-# 3. Tạo .tmp/ và setup MCP launcher cục bộ (không được Git track)
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\.tmp" -Force
+# 3. Tạo mcp/ và setup MCP launcher cục bộ (không được Git track)
+New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp" -Force
 
 # 4. Cài gitnexus toàn cục
 npm install -g gitnexus

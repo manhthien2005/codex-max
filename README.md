@@ -53,6 +53,64 @@ This repository serves as a Codex-centric orchestration layer for daily engineer
 
 ---
 
+## How it Works
+
+### Request lifecycle
+
+Every user prompt flows through a layered stack before producing output:
+
+```
+User prompt
+    │
+    ├── [SessionStart hook] ──── restores plan context from PLANS.md
+    │
+    ├── [UserPromptSubmit hook] ─ injects active plan context into the prompt
+    │
+    ├── [AGENTS.md] ─────────── agent reads operational contract:
+    │       └── identify active repo
+    │       └── load task-intelligence skill (Phase PLAN)
+    │       └── decide: direct execution or spawn subagent
+    │
+    ├── [Intelligence Layers] ── queried before generating any code:
+    │       └── MemPalace     → past decisions, architecture notes
+    │       └── Semantic search → related code by concept (Qdrant + Ollama)
+    │       └── GitNexus      → exact symbols, call graph, blast radius
+    │
+    ├── [Skills / Agent roles] ─ Phase BUILD: narrowest matching skill loaded
+    │
+    ├── [PreToolUse hook] ───── validates each tool call against active plan
+    │
+    ├── Code generation + edits
+    │
+    ├── [PostToolUse hook] ──── reviews tool output against plan
+    │
+    └── [Stop hook] ────────── saves session state, writes MemPalace diary
+```
+
+### Intelligence layers
+
+| Layer | Role | When used |
+|---|---|---|
+| **MemPalace** | Persistent cross-session memory | Past decisions, architecture context |
+| **Qdrant Semantic** | Vector similarity search over indexed code | Finding related code by concept/intent |
+| **GitNexus** | Structural code graph (symbols, deps, call graph) | Exact lookups, impact analysis |
+| **Context7** | Up-to-date library/framework docs | Before writing library-dependent code |
+| **GitHub MCP** | PR/issue access | Reviewing PRs, reading issues |
+
+### Data storage map
+
+| Data | Location | Notes |
+|---|---|---|
+| Semantic vector index | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index via `mcp/semantic/index_health_system_repo.py` |
+| MemPalace drawers | `~/.mempalace/palace/chroma.sqlite3` | Survives reboots, ~ChromaDB |
+| MemPalace knowledge graph | `~/.mempalace/palace/knowledge_graph.sqlite3` | Structured facts (subject → predicate → object) |
+| GitNexus graph | `<repo>/.gitnexus/` per repo | 60–70 MB each, gitignored at repo level |
+| GitNexus global registry | `~/.gitnexus/registry.json` | Tracks all indexed repos |
+| ChromaDB ONNX model | `~/.cache/chroma/onnx_models/` | 166 MB, downloaded once |
+| Session hooks state | `./.sandbox/`, `./sessions/` | Local only, gitignored |
+
+---
+
 ## Project Structure
 
 This workspace is organized around a small number of core layers:
@@ -121,8 +179,8 @@ git clone https://github.com/ThienPhanNoLife/codex-workspace.git C:\Users\$env:U
 Select-String -Path "C:\Users\$env:USERNAME\.codex\config.toml" -Pattern "MrThien"
 # Edit config.toml — replace every "MrThien" with your Windows username
 
-# 3. Create .tmp/ and set up local MCP launchers (not tracked by Git)
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\.tmp" -Force
+# 3. Create mcp/ and set up local MCP launchers (not tracked by Git)
+New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp" -Force
 
 # 4. Install gitnexus globally
 npm install -g gitnexus
