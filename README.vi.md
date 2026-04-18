@@ -4,7 +4,7 @@
 
 # AI Agent Workspace — Cấu Hình Codex Chuẩn Production
 
-<img src="https://github.com/user-attachments/assets/0fcfb1a2-5f0b-4450-95d0-d55c9da57d09" alt="Project Logo" width="160" />
+<img src="https://github.com/user-attachments/assets/0fcfb1a2-5f0b-4450-95d0-d55c9da57d09" alt="Project Logo" width="300" />
 
 > Hệ thống workflow cho agent, ngữ cảnh bền vững, skill được tuyển chọn, hook tự động hóa, và kỷ luật vận hành multi-repo dành cho môi trường Codex nâng cao.
 
@@ -16,7 +16,7 @@ Repository này đóng gói một môi trường làm việc có kỷ luật cho
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-local-blue)
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue)](https://github.com/manhthien2005/codex-max/releases/tag/v1.0.0)
 ![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4)
 ![Shell](https://img.shields.io/badge/shell-cmd%20%2B%20PowerShell-2C2D72)
 ![Mode](https://img.shields.io/badge/focus-Codex%20Workspace-111827)
