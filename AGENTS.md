@@ -16,9 +16,14 @@
 
 **At the start of EVERY session, call these in order:**
 
-1. `mempalace_status` — load palace overview (drawers, wings). Restores project context.
-2. `semantic://health` — verify Qdrant + Ollama are up before any semantic search.
-3. Only after confirming layers are up, proceed to answer the user request.
+1. **Create diary sentinel** — run this command immediately:
+   ```powershell
+   $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'; New-Item -Force "$HOME\.codex\.tmp\diary_pending" | Set-Content -Value $ts
+   ```
+   (Unix: `mkdir -p ~/.codex/.tmp && date > ~/.codex/.tmp/diary_pending`)
+2. `mempalace_status` — load palace overview (drawers, wings). Restores project context.
+3. `semantic://health` — verify Qdrant + Ollama are up before any semantic search.
+4. Only after confirming layers are up, proceed to answer the user request.
 
 **Decision tree — which layer to use:**
 
@@ -59,6 +64,38 @@
 - After completing a task, call `mempalace_diary_write` to record what happened.
 - When architecture decisions are made, call `mempalace_add_drawer` with wing=`decisions`.
 
+**Diary lifecycle (agent self-enforced):**
+
+> ⚠️ Hooks may not execute in all environments. The agent MUST self-enforce this protocol.
+
+**Session start — agent does this immediately:**
+```powershell
+# Windows
+$ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+New-Item -Force -Path "$HOME\.codex\.tmp" -ItemType Directory | Out-Null
+Set-Content -Path "$HOME\.codex\.tmp\diary_pending" -Value $ts
+```
+
+**Session end — agent does this BEFORE responding "done" or stopping:**
+1. Check if sentinel exists: `Test-Path "$HOME\.codex\.tmp\diary_pending"`
+2. If YES → call `mempalace_diary_write` with session summary
+3. Delete sentinel: `Remove-Item "$HOME\.codex\.tmp\diary_pending" -Force`
+4. Only after deletion → session may end
+
+- If the session was trivial (no real work), diary entry may be: "No significant work this session."
+- **Do not skip.** MemPalace context is lost if the diary is not written.
+- The Stop hook in `hooks.json` also enforces this as a second layer (when hooks are active).
+
+**Diary content template:**
+```
+Date: <YYYY-MM-DD>
+Active repo: <path>
+What was done: <summary>
+Decisions made: <or None>
+Issues found: <or None>
+Next steps: <or None>
+```
+
 ---
 
 ## Semantic Search (code similarity)
@@ -97,7 +134,10 @@
 | `HealthGuard` | `D:\DoAn2\VSmartwatch\HealthGuard` | 167 | 853 | 1764 |
 | `healthguard-model-api` | `D:\DoAn2\VSmartwatch\healthguard-model-api` | 90 | 471 | 962 |
 
-**To index a new repo:** `gitnexus index <repo-path>`
+**To index a new repo:** Use the automated onboarding script (see **New Repo Protocol** below).
+
+> ⚠️ If you run a Bash command in a repo without `.gitnexus/`, the `PreToolUse` hook will automatically warn you and print the onboarding command.
+
 **Storage:** `.gitnexus/` at repo root (already in `.gitignore`), `~/.gitnexus/registry.json` globally.
 
 ---
@@ -187,19 +227,21 @@ Before starting implementation, present this table explicitly so the user can pa
 
 ## Hooks & automation
 
-Hooks run automatically — do not re-trigger them manually:
+> ⚠️ Hooks are a **secondary enforcement layer** only. They may not execute in all environments (e.g. Antigravity, OpenCode). The agent MUST self-enforce the diary and indexing protocol from the rules in `Intelligence Layer Protocol` above, regardless of whether hooks fire.
+
+When active, hooks run automatically:
 
 | Hook | When | What it does |
 |:---|:---|:---|
-| `SessionStart` | Session open / resume | Runs `session-catchup.py` to restore plan context, then `user-prompt-submit.sh` |
+| `SessionStart` | Session open / resume | Creates `diary_pending` sentinel + restores plan context |
 | `UserPromptSubmit` | Every user message | Injects plan context into prompt |
-| `PreToolUse (Bash)` | Before any Bash tool | Checks plan alignment via `pre_tool_use.py` |
-| `PostToolUse (Bash)` | After any Bash tool | Reviews Bash output against plan via `post_tool_use.py` |
-| `Stop` | Session end | Runs `stop.py` to save session state |
+| `PreToolUse (Bash)` | Before any Bash tool | Warns if repo has no GitNexus index |
+| `PostToolUse (Bash)` | After any Bash tool | Reviews Bash output against plan |
+| `Stop` | Session end | Blocks if `diary_pending` exists (Gate 1) or plan incomplete (Gate 2) |
 
 - Hooks are defined in `~/.codex/hooks.json`
 - Hook scripts live in `~/.codex/hooks/`
-- If a hook fails silently, it is safe to continue — all hooks use `|| true`
+- All hooks use `|| true` — silent failure is safe, the agent self-enforces
 
 ---
 
@@ -311,6 +353,44 @@ These named agents are available for delegation. Use them by naming them in suba
 | **MemPalace KG** | `~/.mempalace/palace/knowledge_graph.sqlite3` | SQLite, structured facts |
 | **ChromaDB ONNX model** | `~/.cache/chroma/onnx_models/all-MiniLM-L6-v2/` | 166 MB, downloaded once |
 | **Ollama embedding** | Ollama data dir | `qwen3-embedding:0.6b`, 0.6 GB |
+| **Repo registry** | `~/.codex/.tmp/indexed_repos.json` | Updated by `repo-onboard.py`; used by `PreToolUse` hook |
+| **Diary sentinel** | `~/.codex/.tmp/diary_pending` | Created by `SessionStart`; deleted by agent after `mempalace_diary_write` |
+
+---
+
+## New Repo Protocol
+
+When working in a repo that is **not in the GitNexus indexed repos table above**, follow this protocol before any code operations:
+
+### Automated onboarding (preferred)
+
+```powershell
+# One command — handles GitNexus, Qdrant check, and registry update:
+python ~/.codex/scripts/repo-onboard.py <repo-path>
+```
+
+The script will:
+1. Detect git root
+2. Run `gitnexus index <repo-path>` (skips if `.gitnexus/` already exists)
+3. Check if a Qdrant collection exists for this repo
+4. Register the repo in `~/.codex/.tmp/indexed_repos.json`
+5. Print the exact `mempalace_kg_add` + `mempalace_add_drawer` calls you must run
+
+### After the script — complete the MemPalace KG step
+
+The script cannot call MCP tools. The agent must manually run the printed commands:
+
+```
+mempalace_kg_add(subject="<name>", predicate="located_at", object="<path>")
+mempalace_kg_add(subject="<name>", predicate="gitnexus_indexed", object="yes")
+mempalace_add_drawer(wing="projects", room="<name>", content="...")
+```
+
+### Auto-detection
+
+- **`PreToolUse` hook** automatically detects repos without `.gitnexus/` and injects a warning before any Bash operation.
+- The warning is **non-blocking** — it reminds, but does not prevent the Bash command.
+- Once you run `repo-onboard.py`, the `.gitnexus/` dir is created and the warning disappears.
 
 ---
 

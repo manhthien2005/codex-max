@@ -163,17 +163,49 @@ def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
         return "", ""
 
     elif script_name in ("stop.sh",):
+        # Gate 1: MemPalace diary sentinel
+        codex_root = HOOK_DIR.parent
+        sentinel = codex_root / ".tmp" / "diary_pending"
+        if sentinel.exists():
+            try:
+                ts = sentinel.read_text(encoding="utf-8", errors="replace").strip() or "unknown time"
+            except OSError:
+                ts = "unknown time"
+            msg = (
+                "\u26a0\ufe0f  MANDATORY BEFORE STOP \u2014 MemPalace Session Diary\n"
+                f"Session started at: {ts}\n"
+                "The diary sentinel is still active. You MUST:\n"
+                "1. Call MCP tool: mempalace_diary_write\n"
+                "   - wing: 'context'\n"
+                "   - room: 'session_<YYYY-MM-DD>'\n"
+                "   - content: What was done, decisions, issues, next steps.\n"
+                f"2. Delete sentinel to unlock stop:\n"
+                f"   del '{sentinel}'  (Windows) or  rm '{sentinel}'  (Unix)\n"
+                "Do NOT skip this. MemPalace persistence depends on this entry."
+            )
+            return json.dumps({"followup_message": msg}), ""
+        # Gate 2: planning-with-files plan check
         if plan_file.exists():
             try:
                 content = plan_file.read_text(encoding="utf-8", errors="replace")
                 if "ALL PHASES COMPLETE" in content.upper() or "DONE" in content.upper():
-                    return json.dumps({"followup_message": "ALL PHASES COMPLETE — plan finished."}), ""
+                    return json.dumps({"followup_message": "ALL PHASES COMPLETE \u2014 plan finished."}), ""
                 return json.dumps({"followup_message": "Plan is still active. Review task_plan.md before closing."}), ""
             except OSError:
                 pass
         return "{}", ""
 
     elif script_name in ("session-start.sh",):
+        # Create MemPalace diary sentinel
+        import datetime
+        codex_root = HOOK_DIR.parent
+        tmp_dir = codex_root / ".tmp"
+        try:
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            (tmp_dir / "diary_pending").write_text(ts, encoding="utf-8")
+        except OSError:
+            pass
         # Run session-catchup.py then user-prompt-submit
         catchup_path = HOOK_DIR.parent / "skills" / "planning-with-files" / "scripts" / "session-catchup.py"
         catchup_out = ""
