@@ -1,0 +1,103 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# MACHINE-SPECIFIC PATHS — must be updated for each new machine/user
+# Replace all occurrences of "MrThien" with your Windows username.
+# Lines marked ← EDIT are the ones requiring substitution.
+# See docs/INSTALLATION.md for the full setup checklist.
+# ─────────────────────────────────────────────────────────────────────────────
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
+personality = "pragmatic"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+persistent_instructions = "Follow project AGENTS.md guidelines. Use available MCP servers when they can help."
+
+[windows]
+sandbox = "elevated"
+
+[features]
+multi_agent = true
+
+[projects.'\\?\UNC\wsl$\Ubuntu\home\mrthien\.config\opencode']
+trust_level = "trusted"
+
+[projects.'D:\DoAn2\VSmartwatch\Iot_Simulator']
+trust_level = "trusted"
+
+[projects.'D:\DoAn2\VSmartwatch']
+trust_level = "trusted"
+
+[projects.'D:\DoAn2\VSmartwatch\health_system']
+trust_level = "trusted"
+
+[projects.'C:\Users\MrThien\.codex'] # ← EDIT: your .codex path
+trust_level = "trusted"
+
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+
+[mcp_servers.github]
+url = "https://api.githubcopilot.com/mcp/"
+bearer_token_env_var = "GITHUB_TOKEN"
+
+[mcp_servers.exa]
+url = "https://mcp.exa.ai/mcp"
+
+[mcp_servers.memory]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-memory"]
+startup_timeout_sec = 30.0
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest", "--extension"]
+startup_timeout_sec = 30.0
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+startup_timeout_sec = 30.0
+
+[mcp_servers.gitnexus]
+command = "node"
+args = ['C:\Users\MrThien\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\index.js', "mcp"] # ← EDIT: your npm global path
+
+[mcp_servers.qdrant]
+command = "C:\\Users\\MrThien\\.codex\\mcp\\qdrant\\run-qdrant-mcp.cmd" # ← EDIT
+args = []
+
+[mcp_servers.semantic_qdrant_http]
+command = "C:\\Users\\MrThien\\.codex\\mcp\\semantic\\run-semantic-qdrant-stdio.cmd" # ← EDIT
+args = []
+startup_timeout_sec = 60.0
+
+[mcp_servers.mempalace]
+command = "C:\\Users\\MrThien\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd" # ← EDIT
+args = []
+startup_timeout_sec = 120.0
+
+[profiles.strict]
+approval_policy = "on-request"
+sandbox_mode = "read-only"
+web_search = "cached"
+
+[profiles.yolo]
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[agents.explorer]
+description = "Read-only codebase explorer for gathering evidence before changes are proposed."
+config_file = "agents/explorer.toml"
+
+[agents.reviewer]
+description = "PR reviewer focused on correctness, security, and missing tests."
+config_file = "agents/reviewer.toml"
+
+[agents.docs_researcher]
+description = "Documentation specialist that verifies APIs, framework behavior, and release notes."
+config_file = "agents/docs-researcher.toml"

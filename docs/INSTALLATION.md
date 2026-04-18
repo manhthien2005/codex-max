@@ -1,0 +1,215 @@
+# Installation Guide
+
+This document contains the detailed installation and setup flow for the Codex workspace.
+
+It is intentionally separated from the main [`README.md`](../README.md) so the landing page stays concise.
+
+---
+
+## 1. Goal of the Setup
+
+The purpose of the installation flow is to make this repository usable as a stable Codex workspace with:
+- the correct runtime configuration,
+- active hook wiring,
+- reusable agent roles,
+- curated skills,
+- a clean boundary between source files and local runtime data.
+
+---
+
+## 2. Prerequisites
+
+Before using this workspace, confirm the following are available on your machine:
+
+| Requirement | Notes |
+|---|---|
+| **Windows 11** | Primary supported OS |
+| **Git** | For cloning and version control |
+| **Node.js ≥ 18** | Required for MCP servers (memory, playwright, sequential-thinking, gitnexus) |
+| **Python ≥ 3.10** | Required for hook scripts (`pre_tool_use.py`, `post_tool_use.py`, `stop.py`) |
+| **PowerShell 5+** | Available by default on Windows 11 |
+| **Git Bash or WSL** | Required for `.sh` hook scripts referenced in `hooks.json` |
+| **Codex CLI** | Installed and authenticated with your API key |
+
+> [!NOTE]
+> The `hooks.json` hooks use `sh` (Bash syntax). On Windows, this requires **Git Bash** (bundled with Git for Windows) or **WSL**. Pure `cmd.exe` will not work for those hooks.
+
+---
+
+## 3. Clone the Repository
+
+```powershell
+# Replace <your-username> with your Windows username
+git clone https://github.com/manhthien2005/codex-max.git C:\Users\<your-username>\.codex
+```
+
+> [!IMPORTANT]
+> The workspace **must** live at `C:\Users\<your-username>\.codex` for Codex to auto-detect it.
+> Codex loads `AGENTS.md`, `config.toml`, and `hooks.json` from this path on startup.
+
+Verify the clone:
+
+```powershell
+ls C:\Users\$env:USERNAME\.codex
+```
+
+Expected top-level entries: `AGENTS.md`, `config.toml`, `hooks.json`, `agents/`, `hooks/`, `skills/`, `.gitignore`.
+
+---
+
+## 4. Adapt Configuration to Your Machine
+
+### 4.1 Replace all hardcoded paths in `config.toml`
+
+Open `config.toml` and search for every occurrence of `MrThien`. Replace with your Windows username.
+
+```powershell
+# Preview all paths that need replacing
+Select-String -Path "C:\Users\$env:USERNAME\.codex\config.toml" -Pattern "MrThien"
+```
+
+Key sections that contain absolute paths:
+
+```toml
+# MCP server launchers — each marked with ← EDIT in config.toml:
+[mcp_servers.gitnexus]
+command = "node"
+args = ['C:\Users\<YOUR_USERNAME>\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\index.js', "mcp"] # ← EDIT
+
+[mcp_servers.qdrant]
+command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\qdrant\\run-qdrant-mcp.cmd" # ← EDIT
+
+[mcp_servers.semantic_qdrant_http]
+command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\semantic\\run-semantic-qdrant-stdio.cmd" # ← EDIT
+
+[mcp_servers.mempalace]
+command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd" # ← EDIT
+```
+
+### 4.2 Update trusted project paths
+
+In `config.toml`, the `[projects.'...']` entries list paths Codex treats as trusted. Replace or remove entries that are specific to the original machine:
+
+```toml
+[projects.'D:\DoAn2\VSmartwatch']
+trust_level = "trusted"
+```
+
+Add your own project paths as needed.
+
+---
+
+## 5. Set Up Local MCP Launchers (`mcp/`)
+
+> [!WARNING]
+> The `mcp/` directory is **excluded from Git** (see `.gitignore`). It is **not cloned** — you must set it up manually on each machine.
+
+This directory contains the local MCP server binaries and launcher scripts:
+
+| MCP Server | Launcher path | Setup method |
+|---|---|---|
+| `qdrant` | `mcp/qdrant/run-qdrant-mcp.cmd` | Python venv + `pip install mcp-server-qdrant` |
+| `semantic_qdrant_http` | `mcp/semantic/run-semantic-qdrant-stdio.cmd` | Clone/build the semantic adapter |
+| `mempalace` | `mcp/mempalace/run-mempalace-mcp.cmd` | Install MemPalace MCP server |
+
+Create the `mcp/` directory:
+
+```powershell
+New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp" -Force
+New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\qdrant" -Force
+New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\semantic" -Force
+New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\mempalace" -Force
+```
+
+Then follow each tool's installation guide to place the correct launcher `.cmd` at the paths above.
+
+> [!NOTE]
+> The `memory`, `playwright`, `sequential-thinking`, `context7`, `github`, `exa` MCP servers do **not** require `mcp/` setup — they use `npx` or remote URLs and install automatically on first use.
+
+### Install `gitnexus` globally
+
+```powershell
+npm install -g gitnexus
+```
+
+Verify:
+
+```powershell
+node "C:\Users\$env:USERNAME\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\index.js" --version
+```
+
+---
+
+## 6. Verify Hook Scripts
+
+```powershell
+ls "C:\Users\$env:USERNAME\.codex\hooks\"
+```
+
+All scripts referenced by `hooks.json` must exist. Expected files:
+- `session-start.sh` (and optionally `.ps1`)
+- `user-prompt-submit.sh`
+- `pre_tool_use.py`
+- `post_tool_use.py`
+- `stop.py`
+
+> [!IMPORTANT]
+> The `hooks.json` hook commands use `sh` to run `.sh` scripts. This requires **Git Bash** to be installed and `sh` to be on the `PATH`. Test with:
+> ```powershell
+> sh --version
+> ```
+> If `sh` is not found, install [Git for Windows](https://gitforwindows.org/) and ensure the Git Bash `bin/` directory is on your `PATH`.
+
+---
+
+## 7. Post-Install Verification Checklist
+
+Run these checks after setup:
+
+```powershell
+# 1. Confirm required files exist
+$base = "C:\Users\$env:USERNAME\.codex"
+@("AGENTS.md","config.toml","hooks.json",".gitignore") | ForEach-Object {
+    $p = Join-Path $base $_
+    if (Test-Path $p) { Write-Host "OK  $_" } else { Write-Host "MISSING  $_" }
+}
+
+# 2. Confirm required directories exist
+@("agents","hooks","skills","rules","docs") | ForEach-Object {
+    $p = Join-Path $base $_
+    if (Test-Path $p) { Write-Host "OK  $_\" } else { Write-Host "MISSING  $_\" }
+}
+
+# 3. Confirm no hardcoded MrThien paths remain
+Select-String -Path "$base\config.toml" -Pattern "MrThien"
+# Expected: no output (zero matches)
+
+# 4. Confirm node is available
+node --version
+
+# 5. Confirm python is available
+python --version
+
+# 6. Confirm sh (Git Bash) is available
+sh --version
+```
+
+---
+
+## 8. Recommended Operational Discipline
+
+After installation:
+- keep `mcp/` and other local runtime directories fully ignored — never commit them,
+- avoid mixing reference clones into the main source surface,
+- prefer deliberate documentation updates over ad hoc notes,
+- keep configuration changes reviewable and minimal,
+- update `[projects.'...']` in `config.toml` for each new project you want Codex to trust.
+
+---
+
+## 9. Related Documents
+
+- Main overview: [`README.md`](../README.md)
+- Vietnamese overview: [`README.vi.md`](../README.vi.md)
+- English structure guide: [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md)
+- Vietnamese structure guide: [`PROJECT_STRUCTURE.vi.md`](PROJECT_STRUCTURE.vi.md)

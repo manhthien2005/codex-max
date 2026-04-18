@@ -1,0 +1,94 @@
+# ── OS and editor noise ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Python cache ─────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Workspace-local temporary clones and planning artifacts ─────────────────
+temp_repo/
+temp_plan/
+
+# ── Local archives, backups, and caches ───────────────────────────────────────────
+archived_sessions/
+archived_skills/
+backup/
+cache/
+.tmp/
+tmp/
+
+# ── MCP servers (machine-local binaries/venvs, gitignored) ─────────────────
+# mcp/ contains Python venvs (~305 MB) and launcher scripts.
+# Launcher .cmd files are machine-specific (hardcoded paths) — see INSTALLATION.md.
+mcp/
+
+# ── Local runtime, sandbox, and session data ─────────────────────────────────
+sessions/
+memories/
+sqlite/
+.sandbox/
+.sandbox-bin/
+.sandbox-secrets/
+
+# ── Codex internal runtime directories ───────────────────────────────────────
+.codex-agents/
+ecc_staging/
+
+# ── Vendor sub-repos (embedded git repos — not tracked as submodules) ────────────────
+# vendor_imports/skills has its own .git — exclude it to avoid nested repo confusion.
+vendor_imports/skills/
+
+# ── Sandbox binary and log artifacts ──────────────────────────────────────
+sandbox.log
+sandbox_users.json
+setup_error.json
+setup_marker.json
+codex.exe
+codex-command-runner.exe
+
+# ── Vendor cache files (auto-generated, not source) ──────────────────────
+vendor_imports/skills-curated-cache.json
+*-curated-cache.json
+
+# ── Root-level local state files ─────────────────────────────────────────────
+.codex-global-state.json
+.personality_migration
+auth.json
+cap_sid
+installation_id
+models_cache.json
+session_index.jsonl
+logs_2.sqlite
+logs_2.sqlite-shm
+logs_2.sqlite-wal
+state_5.sqlite
+
+# ── Root-level secrets and machine-local credentials ─────────────────────────
+.env
+.env.*
+*.pem
+*.key
+
+# ── SQLite and local database artifacts ──────────────────────────────────────
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+
+# ── Local logs and ad-hoc scratch outputs ────────────────────────────────────
+*.log
+*.tmp
+*.bak
+*.backup
+*.out
+*.err
