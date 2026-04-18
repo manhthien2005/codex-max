@@ -30,6 +30,8 @@ Before using this workspace, confirm the following are available on your machine
 | **PowerShell 5+** | Available by default on Windows 11 |
 | **Git Bash or WSL** | Required for `.sh` hook scripts referenced in `hooks.json` |
 | **Codex CLI** | Installed and authenticated with your API key |
+| **Docker Desktop** | Required to run the local Qdrant vector database (`mcp/semantic`) |
+| **Ollama** | Required locally for semantic embeddings (pull `qwen3-embedding:0.6b`) |
 
 > [!NOTE]
 > The `hooks.json` hooks use `sh` (Bash syntax). On Windows, this requires **Git Bash** (bundled with Git for Windows) or **WSL**. Pure `cmd.exe` will not work for those hooks.
