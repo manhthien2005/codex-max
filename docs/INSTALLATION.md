@@ -128,7 +128,22 @@ Then follow each tool's installation guide to place the correct launcher `.cmd` 
 > [!NOTE]
 > The `memory`, `playwright`, `sequential-thinking`, `context7`, `github`, `exa` MCP servers do **not** require `mcp/` setup — they use `npx` or remote URLs and install automatically on first use.
 
-### Install `gitnexus` globally
+### 5.1 Start backend services (Docker & Ollama)
+
+Before the semantic adapter can work, start its dependencies:
+
+```powershell
+# 1. Pull the required embedding model (0.6GB)
+ollama pull qwen3-embedding:0.6b
+
+# 2. Start Qdrant Docker container (creates a persistent volume for the workspace)
+docker run -d -p 6333:6333 -p 6334:6334 `
+    --name opencode_qdrant `
+    -v opencode_qdrant_data:/qdrant/storage `
+    qdrant/qdrant
+```
+
+### 5.2 Install `gitnexus` globally
 
 ```powershell
 npm install -g gitnexus
