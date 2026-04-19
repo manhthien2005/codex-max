@@ -101,49 +101,125 @@ Add your own project paths as needed.
 
 ---
 
-## 5. Set Up Local MCP Launchers (`mcp/`)
+## 5. Set Up Local MCP Servers (`mcp/`)
 
 > [!WARNING]
 > The `mcp/` directory is **excluded from Git** (see `.gitignore`). It is **not cloned** — you must set it up manually on each machine.
+> The repository includes a **`mcp_template/`** folder with all necessary launcher scripts and the semantic adapter source.
 
-This directory contains the local MCP server binaries and launcher scripts:
-
-| MCP Server | Launcher path | Setup method |
-|---|---|---|
-| `qdrant` | `mcp/qdrant/run-qdrant-mcp.cmd` | Python venv + `pip install mcp-server-qdrant` |
-| `semantic_qdrant_http` | `mcp/semantic/run-semantic-qdrant-stdio.cmd` | Clone/build the semantic adapter |
-| `mempalace` | `mcp/mempalace/run-mempalace-mcp.cmd` | Install MemPalace MCP server |
-
-Create the `mcp/` directory:
+### 5.1 Bootstrap `mcp/` from the template
 
 ```powershell
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp" -Force
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\qdrant" -Force
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\semantic" -Force
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\mempalace" -Force
+$src = "C:\Users\$env:USERNAME\.codex\mcp_template"
+$dst = "C:\Users\$env:USERNAME\.codex\mcp"
+
+# Create mcp/ sub-directories
+New-Item -Force -ItemType Directory "$dst\qdrant"
+New-Item -Force -ItemType Directory "$dst\semantic"
+New-Item -Force -ItemType Directory "$dst\mempalace"
+
+# Copy launchers and source files from the template
+Copy-Item "$src\qdrant\*"    "$dst\qdrant\"
+Copy-Item "$src\semantic\*"  "$dst\semantic\"
+Copy-Item "$src\mempalace\*" "$dst\mempalace\"
 ```
 
-Then follow each tool's installation guide to place the correct launcher `.cmd` at the paths above.
+After copying, `mcp/` will have:
+
+| Path | What it is |
+|---|---|
+| `mcp/qdrant/run-qdrant-mcp.cmd` | Upstream Qdrant MCP server launcher |
+| `mcp/semantic/run-semantic-qdrant-stdio.cmd` | Semantic adapter launcher (used by Codex via stdio) |
+| `mcp/semantic/run-semantic-qdrant-http.cmd` | Semantic adapter launcher (HTTP, manual/debug use) |
+| `mcp/semantic/semantic_qdrant_http.py` | Semantic adapter source |
+| `mcp/semantic/repo-index.py` | Generic repo indexer — one-shot or `--watch` mode |
+| `mcp/mempalace/run-mempalace-mcp.cmd` | MemPalace MCP server launcher |
+
+### 5.2 Install the Python venv and dependencies
+
+The `qdrant` and `semantic` servers share a single Python venv located at `mcp/qdrant/`:
+
+```powershell
+$venv = "C:\Users\$env:USERNAME\.codex\mcp\qdrant"
+
+# Create the venv
+python -m venv $venv
+
+# Install all required packages
+& "$venv\Scripts\pip" install fastmcp qdrant-client mcp-server-qdrant
+
+# Install watchdog (optional — only needed for --watch mode)
+& "$venv\Scripts\pip" install watchdog
+```
 
 > [!NOTE]
 > The `memory`, `playwright`, `sequential-thinking`, `context7`, `github`, `exa` MCP servers do **not** require `mcp/` setup — they use `npx` or remote URLs and install automatically on first use.
 
-### 5.1 Start backend services (Docker & Ollama)
+### 5.3 Install MemPalace
+
+```powershell
+pip install mempalace
+```
+
+`run-mempalace-mcp.cmd` uses the global `python` (or the venv activated by the system PATH).
+
+### 5.4 Start backend services (Docker & Ollama)
 
 Before the semantic adapter can work, start its dependencies:
 
 ```powershell
-# 1. Pull the required embedding model (0.6GB)
+# 1. Pull the required embedding model (0.6 GB)
 ollama pull qwen3-embedding:0.6b
 
-# 2. Start Qdrant Docker container (creates a persistent volume for the workspace)
+# 2. Start a Qdrant Docker container with a persistent volume
 docker run -d -p 6333:6333 -p 6334:6334 `
     --name opencode_qdrant `
     -v opencode_qdrant_data:/qdrant/storage `
     qdrant/qdrant
 ```
 
-### 5.2 Install `gitnexus` globally
+### 5.5 Index your repos into Qdrant
+
+Use `repo-index.py` to populate Qdrant with embeddings for your codebase.
+
+**One-shot index** (index once and exit):
+
+```powershell
+$python = "C:\Users\$env:USERNAME\.codex\mcp\qdrant\Scripts\python.exe"
+$script = "C:\Users\$env:USERNAME\.codex\mcp\semantic\repo-index.py"
+
+# Index a Dart/Flutter repo (default extensions: .dart)
+& $python $script --repo "D:\MyProject\health_system" --subdir lib
+
+# Index a Python repo
+& $python $script --repo "D:\MyProject\backend" --exts .py
+
+# Index a TypeScript repo (no subdirectory filter)
+& $python $script --repo "D:\MyProject\frontend" --exts .ts,.tsx
+```
+
+**Watch mode** (auto-update Qdrant on every file save):
+
+```powershell
+# Keeps running in background — re-indexes changed files automatically
+& $python $script --repo "D:\MyProject\health_system" --subdir lib --watch
+```
+
+The collection name defaults to `semantic-<repo-folder-name>` and is auto-discovered by the semantic adapter.
+
+**Indexing multiple repos:**
+
+```powershell
+@(
+    @{repo="D:\MyProject\health_system"; subdir="lib"; exts=".dart"},
+    @{repo="D:\MyProject\backend"; subdir=""; exts=".py"},
+    @{repo="D:\MyProject\frontend"; subdir="src"; exts=".ts,.tsx"}
+) | ForEach-Object {
+    & $python $script --repo $_.repo --subdir $_.subdir --exts $_.exts
+}
+```
+
+### 5.6 Install `gitnexus` globally
 
 ```powershell
 npm install -g gitnexus

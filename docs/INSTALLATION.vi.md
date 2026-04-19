@@ -101,49 +101,125 @@ Thêm các project path của bạn vào theo nhu cầu.
 
 ---
 
-## 5. Cài đặt MCP Launcher cục bộ (`mcp/`)
+## 5. Cài đặt MCP Server cục bộ (`mcp/`)
 
 > [!WARNING]
 > Thư mục `mcp/` bị **loại khỏi Git** (xem `.gitignore`). Nó **không được clone** — bạn phải tự setup trên mỗi máy.
+> Repository bao gồm folder **`mcp_template/`** với toàn bộ launcher script và source semantic adapter cần thiết.
 
-Thư mục này chứa binary và launcher script cho các MCP server cục bộ:
-
-| MCP Server | Đường dẫn launcher | Cách setup |
-|---|---|---|
-| `qdrant` | `mcp/qdrant/run-qdrant-mcp.cmd` | Python venv + `pip install mcp-server-qdrant` |
-| `semantic_qdrant_http` | `mcp/semantic/run-semantic-qdrant-stdio.cmd` | Clone/build semantic adapter |
-| `mempalace` | `mcp/mempalace/run-mempalace-mcp.cmd` | Cài MemPalace MCP server |
-
-Tạo thư mục `mcp/`:
+### 5.1 Bootstrap `mcp/` từ template
 
 ```powershell
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp" -Force
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\qdrant" -Force
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\semantic" -Force
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp\mempalace" -Force
+$src = "C:\Users\$env:USERNAME\.codex\mcp_template"
+$dst = "C:\Users\$env:USERNAME\.codex\mcp"
+
+# Tạo các sub-directory
+New-Item -Force -ItemType Directory "$dst\qdrant"
+New-Item -Force -ItemType Directory "$dst\semantic"
+New-Item -Force -ItemType Directory "$dst\mempalace"
+
+# Copy launcher và source từ template
+Copy-Item "$src\qdrant\*"    "$dst\qdrant\"
+Copy-Item "$src\semantic\*"  "$dst\semantic\"
+Copy-Item "$src\mempalace\*" "$dst\mempalace\"
 ```
 
-Sau đó làm theo hướng dẫn cài đặt của từng công cụ để đặt file launcher `.cmd` đúng vị trí.
+Sau khi copy, `mcp/` sẽ có:
+
+| Đường dẫn | Mô tả |
+|---|---|
+| `mcp/qdrant/run-qdrant-mcp.cmd` | Launcher Qdrant MCP server (upstream) |
+| `mcp/semantic/run-semantic-qdrant-stdio.cmd` | Launcher semantic adapter (Codex dùng via stdio) |
+| `mcp/semantic/run-semantic-qdrant-http.cmd` | Launcher semantic adapter (HTTP, debug thủ công) |
+| `mcp/semantic/semantic_qdrant_http.py` | Source semantic adapter |
+| `mcp/semantic/repo-index.py` | Indexer repo generic — one-shot hoặc `--watch` |
+| `mcp/mempalace/run-mempalace-mcp.cmd` | Launcher MemPalace MCP server |
+
+### 5.2 Cài Python venv và dependencies
+
+Cả hai server `qdrant` và `semantic` dùng chung một Python venv ở `mcp/qdrant/`:
+
+```powershell
+$venv = "C:\Users\$env:USERNAME\.codex\mcp\qdrant"
+
+# Tạo venv
+python -m venv $venv
+
+# Cài các package cần thiết
+& "$venv\Scripts\pip" install fastmcp qdrant-client mcp-server-qdrant
+
+# Cài watchdog (tùy chọn — chỉ cần nếu dùng --watch mode)
+& "$venv\Scripts\pip" install watchdog
+```
 
 > [!NOTE]
 > Các MCP server `memory`, `playwright`, `sequential-thinking`, `context7`, `github`, `exa` **không** cần setup `mcp/` — chúng dùng `npx` hoặc remote URL và tự cài khi dùng lần đầu.
 
-### 5.1 Khởi động service nền tảng (Docker & Ollama)
+### 5.3 Cài MemPalace
+
+```powershell
+pip install mempalace
+```
+
+`run-mempalace-mcp.cmd` dùng `python` toàn cục (hoặc venv được kích hoạt trong PATH).
+
+### 5.4 Khởi động service nền tảng (Docker & Ollama)
 
 Trước khi semantic adapter có thể hoạt động, cần chạy các phụ thuộc sau:
 
 ```powershell
-# 1. Tải model embedding bắt buộc (0.6GB)
+# 1. Tải model embedding bắt buộc (0.6 GB)
 ollama pull qwen3-embedding:0.6b
 
-# 2. Chạy Qdrant Docker container (tạo volume liên tục để lưu data)
+# 2. Chạy Qdrant Docker container với volume liên tục
 docker run -d -p 6333:6333 -p 6334:6334 `
     --name opencode_qdrant `
     -v opencode_qdrant_data:/qdrant/storage `
     qdrant/qdrant
 ```
 
-### 5.2 Cài `gitnexus` toàn cục
+### 5.5 Index repo vào Qdrant
+
+Dùng `repo-index.py` để đưa các repo vào Qdrant (bước bắt buộc trước khi tìm kiếm bằng semantic).
+
+**One-shot index** (index một lần rồi thoát):
+
+```powershell
+$python = "C:\Users\$env:USERNAME\.codex\mcp\qdrant\Scripts\python.exe"
+$script = "C:\Users\$env:USERNAME\.codex\mcp\semantic\repo-index.py"
+
+# Index repo Dart/Flutter
+& $python $script --repo "D:\MyProject\health_system" --subdir lib
+
+# Index repo Python
+& $python $script --repo "D:\MyProject\backend" --exts .py
+
+# Index repo TypeScript
+& $python $script --repo "D:\MyProject\frontend" --exts .ts,.tsx
+```
+
+**Watch mode** (tự cập nhật Qdrant khi file thay đổi):
+
+```powershell
+# Chạy liên tục — tự re-index file được sửa mỗi khi save
+& $python $script --repo "D:\MyProject\health_system" --subdir lib --watch
+```
+
+Tên collection mặc định là `semantic-<tên-folder-repo>` và semantic adapter tự detect.
+
+**Index nhiều repo cùng lúc:**
+
+```powershell
+@(
+    @{repo="D:\MyProject\health_system"; subdir="lib"; exts=".dart"},
+    @{repo="D:\MyProject\backend"; subdir=""; exts=".py"},
+    @{repo="D:\MyProject\frontend"; subdir="src"; exts=".ts,.tsx"}
+) | ForEach-Object {
+    & $python $script --repo $_.repo --subdir $_.subdir --exts $_.exts
+}
+```
+
+### 5.6 Cài `gitnexus` toàn cục
 
 ```powershell
 npm install -g gitnexus

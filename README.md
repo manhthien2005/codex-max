@@ -101,7 +101,7 @@ User prompt
 
 | Data | Location | Notes |
 |---|---|---|
-| Semantic vector index | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index via `mcp/semantic/index_health_system_repo.py` |
+| Semantic vector index | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index via `mcp_template/semantic/repo-index.py` (supports `--watch`) |
 | MemPalace drawers | `~/.mempalace/palace/chroma.sqlite3` | Survives reboots, ~ChromaDB |
 | MemPalace knowledge graph | `~/.mempalace/palace/knowledge_graph.sqlite3` | Structured facts (subject → predicate → object) |
 | GitNexus graph | `<repo>/.gitnexus/` per repo | 60–70 MB each, gitignored at repo level |
@@ -120,6 +120,7 @@ This workspace is organized around a small number of core layers:
 - [`hooks/`](hooks) contains lifecycle automation scripts
 - [`skills/`](skills) provides curated reusable workflows and operational knowledge
 - [`rules/`](rules) stores additional workspace rule material
+- [`mcp_template/`](mcp_template) provides copy-ready launcher scripts and the semantic adapter source for setting up the local `mcp/` directory on a new machine
 - ignored local-only areas such as caches, sessions, SQLite state, sandbox traces, and temp clones remain outside the clean source surface
 
 For the full structure reference, including the main files inside each important directory, open the English structure guide by default:
@@ -169,27 +170,38 @@ Review [`.gitignore`](.gitignore) before versioning this workspace. It already e
 
 > Full guide: [`docs/INSTALLATION.md`](docs/INSTALLATION.md) · Vietnamese: [`docs/INSTALLATION.vi.md`](docs/INSTALLATION.vi.md)
 
-### TL;DR — four things to do after cloning
+### TL;DR — five things to do after cloning
 
 ```powershell
 # 1. Clone to the correct path (Codex auto-detects this location)
-git clone https://github.com/ThienPhanNoLife/codex-workspace.git C:\Users\$env:USERNAME\.codex
+git clone https://github.com/manhthien2005/codex-max.git C:\Users\$env:USERNAME\.codex
 
 # 2. Replace all hardcoded paths that reference the original username
 Select-String -Path "C:\Users\$env:USERNAME\.codex\config.toml" -Pattern "MrThien"
 # Edit config.toml — replace every "MrThien" with your Windows username
 
-# 3. Create mcp/ and set up local MCP launchers (not tracked by Git)
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp" -Force
+# 3. Bootstrap mcp/ from the included template (launchers + semantic adapter)
+$src = "C:\Users\$env:USERNAME\.codex\mcp_template"
+$dst = "C:\Users\$env:USERNAME\.codex\mcp"
+New-Item -Force -ItemType Directory "$dst\qdrant", "$dst\semantic", "$dst\mempalace"
+Copy-Item "$src\qdrant\*"    "$dst\qdrant\"
+Copy-Item "$src\semantic\*"  "$dst\semantic\"
+Copy-Item "$src\mempalace\*" "$dst\mempalace\"
 
-# 4. Install gitnexus globally
+# 4. Install Python venv + dependencies for qdrant/semantic MCP servers
+python -m venv "$dst\qdrant"
+& "$dst\qdrant\Scripts\pip" install fastmcp qdrant-client mcp-server-qdrant
+
+# 5. Install gitnexus globally and pull the Ollama embedding model
 npm install -g gitnexus
+ollama pull qwen3-embedding:0.6b
 ```
 
 The full guide covers all steps in detail, including:
-- prerequisites (Node.js ≥ 18, Python ≥ 3.10, Git Bash),
+- prerequisites (Node.js ≥ 18, Python ≥ 3.10, Docker Desktop, Ollama, Git Bash),
 - path replacement in `config.toml`,
-- setting up `.tmp/` MCP launchers (qdrant, mempalace, semantic search),
+- setting up `mcp/` from `mcp_template/` (qdrant, mempalace, semantic search),
+- indexing your repos with `repo-index.py` (one-shot or `--watch` mode),
 - hook script verification,
 - post-install checklist with ready-to-run PowerShell commands.
 

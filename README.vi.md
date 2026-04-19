@@ -101,7 +101,7 @@ User prompt
 
 | Data | Vị trí | Ghi chú |
 |---|---|---|
-| Semantic vector index | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index qua `mcp/semantic/index_health_system_repo.py` |
+| Semantic vector index | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index qua `mcp_template/semantic/repo-index.py` (hỗ trợ `--watch`) |
 | MemPalace drawers | `~/.mempalace/palace/chroma.sqlite3` | Không bị mất khi reboot, ~ChromaDB |
 | MemPalace knowledge graph | `~/.mempalace/palace/knowledge_graph.sqlite3` | Structured facts (chủ thể → vị ngữ → bổ ngữ) |
 | GitNexus graph | `<repo>/.gitnexus/` trên từng repo | 60–70 MB mỗi repo, gitignored ở repo |
@@ -120,6 +120,7 @@ Workspace này được tổ chức quanh một số lớp lõi chính:
 - [`hooks/`](hooks) chứa các script tự động hóa theo vòng đời session
 - [`skills/`](skills) cung cấp workflow tái sử dụng và tri thức vận hành đã được tuyển chọn
 - [`rules/`](rules) lưu rule material bổ sung cho workspace
+- [`mcp_template/`](mcp_template) cung cấp launcher script mẫu và source semantic adapter để cài đặt `mcp/` trên máy mới
 - các vùng local-only như cache, sessions, SQLite state, sandbox traces, và temp clones được giữ ngoài clean source surface
 
 Nếu muốn xem chi tiết đầy đủ, gồm cả các file chính bên trong từng thư mục quan trọng, mặc định hãy mở bản tiếng Anh trước:
@@ -169,27 +170,38 @@ Kiểm tra [`.gitignore`](.gitignore) trước khi versioning workspace này. Fi
 
 > Hướng dẫn đầy đủ: [`docs/INSTALLATION.vi.md`](docs/INSTALLATION.vi.md) · English: [`docs/INSTALLATION.md`](docs/INSTALLATION.md)
 
-### TL;DR — bốn việc cần làm sau khi clone
+### TL;DR — năm việc cần làm sau khi clone
 
 ```powershell
 # 1. Clone đúng vào đường dẫn Codex tự nhận diện
-git clone https://github.com/ThienPhanNoLife/codex-workspace.git C:\Users\$env:USERNAME\.codex
+git clone https://github.com/manhthien2005/codex-max.git C:\Users\$env:USERNAME\.codex
 
 # 2. Thay toàn bộ đường dẫn cứng của username gốc
 Select-String -Path "C:\Users\$env:USERNAME\.codex\config.toml" -Pattern "MrThien"
 # Sửa config.toml — thay mọi chỗ "MrThien" bằng tên người dùng Windows của bạn
 
-# 3. Tạo mcp/ và setup MCP launcher cục bộ (không được Git track)
-New-Item -ItemType Directory -Path "C:\Users\$env:USERNAME\.codex\mcp" -Force
+# 3. Bootstrap mcp/ từ template có sẵn (launcher + semantic adapter)
+$src = "C:\Users\$env:USERNAME\.codex\mcp_template"
+$dst = "C:\Users\$env:USERNAME\.codex\mcp"
+New-Item -Force -ItemType Directory "$dst\qdrant", "$dst\semantic", "$dst\mempalace"
+Copy-Item "$src\qdrant\*"    "$dst\qdrant\"
+Copy-Item "$src\semantic\*"  "$dst\semantic\"
+Copy-Item "$src\mempalace\*" "$dst\mempalace\"
 
-# 4. Cài gitnexus toàn cục
+# 4. Cài Python venv + dependencies cho qdrant/semantic MCP server
+python -m venv "$dst\qdrant"
+& "$dst\qdrant\Scripts\pip" install fastmcp qdrant-client mcp-server-qdrant
+
+# 5. Cài gitnexus toàn cục và pull model Ollama
 npm install -g gitnexus
+ollama pull qwen3-embedding:0.6b
 ```
 
 Hướng dẫn đầy đủ bao gồm chi tiết từng bước:
-- điều kiện tiên quyết (Node.js ≥ 18, Python ≥ 3.10, Git Bash),
+- điều kiện tiên quyết (Node.js ≥ 18, Python ≥ 3.10, Docker Desktop, Ollama, Git Bash),
 - thay đường dẫn trong `config.toml`,
-- setup MCP launcher trong `.tmp/` (qdrant, mempalace, semantic search),
+- setup `mcp/` từ `mcp_template/` (qdrant, mempalace, semantic search),
+- index repo với `repo-index.py` (one-shot hoặc `--watch` mode),
 - kiểm tra hook scripts,
 - checklist verify sau cài đặt bằng lệnh PowerShell có thể chạy ngay.
 

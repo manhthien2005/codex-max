@@ -76,6 +76,9 @@ command = "C:\\Users\\MrThien\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd" # 
 args = []
 startup_timeout_sec = 120.0
 
+[mcp_servers.mempalace.tools.mempalace_status]
+approval_mode = "approve"
+
 [profiles.strict]
 approval_policy = "on-request"
 sandbox_mode = "read-only"
