@@ -163,18 +163,29 @@ pip install mempalace
 
 `run-mempalace-mcp.cmd` uses the global `python` (or the venv activated by the system PATH).
 
-### 5.4 Start backend services (Docker & Ollama)
+### 5.4 Start backend services in Docker (Qdrant + Ollama)
 
-Before the semantic adapter can work, start its dependencies:
+Before the semantic adapter can work, start its dependencies.
+
+> [!IMPORTANT]
+> Both Qdrant and Ollama should be run in Docker for this install flow.
+> Do **not** install Ollama separately on the host machine for these steps.
+> This install flow expects GPU acceleration to be available for Ollama because the embedding model should run with GPU support.
 
 ```powershell
-# 1. Pull the required embedding model (0.6 GB)
-ollama pull qwen3-embedding:0.6b
+# 1. Start Ollama in Docker
+#    Then exec into the container and pull the required embedding model (0.6 GB)
+docker run -d -p 11434:11434 `
+    --name ollama `
+    -v ollama_data:/root/.ollama `
+    ollama/ollama
 
-# 2. Start a Qdrant Docker container with a persistent volume
+docker exec -it ollama ollama pull qwen3-embedding:0.6b
+
+# 2. Start Qdrant in Docker with a persistent volume
 docker run -d -p 6333:6333 -p 6334:6334 `
-    --name opencode_qdrant `
-    -v opencode_qdrant_data:/qdrant/storage `
+    --name qdrant `
+    -v qdrant_data:/qdrant/storage `
     qdrant/qdrant
 ```
 

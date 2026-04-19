@@ -163,18 +163,29 @@ pip install mempalace
 
 `run-mempalace-mcp.cmd` dùng `python` toàn cục (hoặc venv được kích hoạt trong PATH).
 
-### 5.4 Khởi động service nền tảng (Docker & Ollama)
+### 5.4 Khởi động service nền tảng trong Docker (Qdrant + Ollama)
 
-Trước khi semantic adapter có thể hoạt động, cần chạy các phụ thuộc sau:
+Trước khi semantic adapter có thể hoạt động, cần chạy các phụ thuộc sau.
+
+> [!IMPORTANT]
+> Trong luồng cài đặt này, cả Qdrant và Ollama đều phải chạy trong Docker.
+> Không cài Ollama riêng trên máy host cho các bước bên dưới để tránh cài nhầm và lệch môi trường.
+> Luồng cài đặt này giả định Ollama có GPU support, vì model embedding nên chạy với tăng tốc GPU.
 
 ```powershell
-# 1. Tải model embedding bắt buộc (0.6 GB)
-ollama pull qwen3-embedding:0.6b
+# 1. Chạy Ollama trong Docker
+#    Sau đó exec vào container để tải model embedding bắt buộc (0.6 GB)
+docker run -d -p 11434:11434 `
+    --name ollama `
+    -v ollama_data:/root/.ollama `
+    ollama/ollama
 
-# 2. Chạy Qdrant Docker container với volume liên tục
+docker exec -it ollama ollama pull qwen3-embedding:0.6b
+
+# 2. Chạy Qdrant trong Docker với volume liên tục
 docker run -d -p 6333:6333 -p 6334:6334 `
-    --name opencode_qdrant `
-    -v opencode_qdrant_data:/qdrant/storage `
+    --name qdrant `
+    -v qdrant_data:/qdrant/storage `
     qdrant/qdrant
 ```
 

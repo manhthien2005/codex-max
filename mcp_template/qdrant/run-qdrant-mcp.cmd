@@ -14,7 +14,7 @@
 setlocal
 
 set "QDRANT_URL=http://127.0.0.1:6333"
-set "COLLECTION_NAME=opencode-memory"
+set "COLLECTION_NAME=qdrant-memory"
 set "EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2"
 set "FASTMCP_LOG_LEVEL=INFO"
 set "PYTHONIOENCODING=utf-8"

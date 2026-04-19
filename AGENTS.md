@@ -347,7 +347,7 @@ These named agents are available for delegation. Use them by naming them in suba
 
 | Layer | Data location | Notes |
 |:---|:---|:---|
-| **Qdrant vectors** | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index via `index_health_system_repo.py` |
+| **Qdrant vectors** | Docker volume `qdrant_data` → `/qdrant/storage` | Re-index via `index_health_system_repo.py` |
 | **GitNexus graph** | `<repo>/.gitnexus/` (per-repo) | 60-66 MB each, add to `.gitignore` |
 | **MemPalace drawers** | `~/.mempalace/palace/chroma.sqlite3` | Persistent, survives reboots |
 | **MemPalace KG** | `~/.mempalace/palace/knowledge_graph.sqlite3` | SQLite, structured facts |

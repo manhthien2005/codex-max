@@ -101,7 +101,7 @@ User prompt
 
 | Data | Location | Notes |
 |---|---|---|
-| Semantic vector index | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index via `mcp_template/semantic/repo-index.py` (supports `--watch`) |
+| Semantic vector index | Docker volume `qdrant_data` → `/qdrant/storage` | Re-index via `mcp_template/semantic/repo-index.py` (supports `--watch`) |
 | MemPalace drawers | `~/.mempalace/palace/chroma.sqlite3` | Survives reboots, ~ChromaDB |
 | MemPalace knowledge graph | `~/.mempalace/palace/knowledge_graph.sqlite3` | Structured facts (subject → predicate → object) |
 | GitNexus graph | `<repo>/.gitnexus/` per repo | 60–70 MB each, gitignored at repo level |

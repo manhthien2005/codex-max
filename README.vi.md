@@ -101,7 +101,7 @@ User prompt
 
 | Data | Vị trí | Ghi chú |
 |---|---|---|
-| Semantic vector index | Docker volume `opencode_qdrant_data` → `/qdrant/storage` | Re-index qua `mcp_template/semantic/repo-index.py` (hỗ trợ `--watch`) |
+| Semantic vector index | Docker volume `qdrant_data` → `/qdrant/storage` | Re-index qua `mcp_template/semantic/repo-index.py` (hỗ trợ `--watch`) |
 | MemPalace drawers | `~/.mempalace/palace/chroma.sqlite3` | Không bị mất khi reboot, ~ChromaDB |
 | MemPalace knowledge graph | `~/.mempalace/palace/knowledge_graph.sqlite3` | Structured facts (chủ thể → vị ngữ → bổ ngữ) |
 | GitNexus graph | `<repo>/.gitnexus/` trên từng repo | 60–70 MB mỗi repo, gitignored ở repo |
