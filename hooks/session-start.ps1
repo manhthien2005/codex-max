@@ -25,6 +25,5 @@ if ($PythonBin -and (Test-Path $catchupScript)) {
     & $PythonBin $catchupScript (Get-Location).Path 2>$null
 }
 
-# Do not invoke user-prompt-submit here.
-# UserPromptSubmit is a separate lifecycle hook and should own prompt injection.
+& (Join-Path $ScriptDir "user-prompt-submit.ps1")
 exit 0

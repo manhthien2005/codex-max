@@ -30,7 +30,7 @@ def main() -> None:
     PROBE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     record = {
-        "ts": datetime.datetime.utcnow().isoformat() + "Z",
+        "ts": datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
         "hook": "PreToolUse",
         "payload_keys": list(payload.keys()),
         "tool_name": payload.get("tool_name", "unknown"),
@@ -42,7 +42,7 @@ def main() -> None:
         f.write(json.dumps(record) + "\n")
 
     # Allow the command through — không can thiệp
-    print('{"decision": "allow"}')
+    # PreToolUse accepts empty success output for "continue".
 
 if __name__ == "__main__":
     main()

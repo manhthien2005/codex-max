@@ -1,314 +1,225 @@
 # Installation Guide
 
-This document contains the detailed installation and setup flow for the Codex workspace.
+This workspace is supported as a **WSL2-first** Codex environment.
 
-It is intentionally separated from the main [`README.md`](../README.md) so the landing page stays concise.
+The intended steady state is:
 
----
-
-## 1. Goal of the Setup
-
-The purpose of the installation flow is to make this repository usable as a stable Codex workspace with:
-- the correct runtime configuration,
-- active hook wiring,
-- reusable agent roles,
-- curated skills,
-- a clean boundary between source files and local runtime data.
+- canonical Codex home at `~/.codex`,
+- repo-local runtime skills at `./.agents/skills`,
+- user-scope runtime skills at `$HOME/.agents/skills`,
+- machine-local MCP launchers and venvs under `~/.codex/mcp`,
+- only a thin Windows bridge for launching into WSL.
 
 ---
 
-## 2. Prerequisites
-
-Before using this workspace, confirm the following are available on your machine:
+## 1. Requirements
 
 | Requirement | Notes |
 |---|---|
-| **Windows 11** | Primary supported OS |
-| **Git** | For cloning and version control |
-| **Node.js ≥ 18** | Required for MCP servers (memory, playwright, sequential-thinking, gitnexus) |
-| **Python ≥ 3.10** | Required for hook scripts (`pre_tool_use.py`, `post_tool_use.py`, `stop.py`) |
-| **PowerShell 5+** | Available by default on Windows 11 |
-| **Codex CLI** | Installed and authenticated with your API key |
-| **Docker Desktop** | Required to run the local Qdrant vector database (`mcp/semantic`) |
-| **Ollama** | Required locally for semantic embeddings (pull `qwen3-embedding:0.6b`) |
-
-> [!NOTE]
-> The current hook runtime for this workspace is PowerShell + Python first. No separate Bash shell is required for the active [`hooks.json`](hooks.json) configuration.
-
----
-
-## 3. Clone the Repository
-
-```powershell
-# Replace <your-username> with your Windows username
-git clone https://github.com/manhthien2005/codex-max.git C:\Users\<your-username>\.codex
-```
+| **WSL2 Ubuntu** | Primary supported runtime |
+| **Git** | Clone and updates |
+| **Python 3.10+** | Hooks, bootstrap, local MCP venvs |
+| **curl** | Bootstrap helpers |
+| **Node.js LTS via nvm** | Memory, Playwright, Sequential Thinking, GitNexus |
+| **Codex CLI** | Installed inside WSL |
+| **Docker** | Qdrant backend |
+| **Ollama** | Embedding backend for semantic search |
 
 > [!IMPORTANT]
-> The workspace **must** live at `C:\Users\<your-username>\.codex` for Codex to auto-detect it.
-> Codex loads `AGENTS.md`, `config.toml`, and `hooks.json` from this path on startup.
-
-Verify the clone:
-
-```powershell
-ls C:\Users\$env:USERNAME\.codex
-```
-
-Expected top-level entries: `AGENTS.md`, `config.toml`, `hooks.json`, `agents/`, `hooks/`, `skills/`, `.gitignore`.
+> Native Windows execution is not the target. Use WSL as the actual runtime and treat PowerShell only as a launcher into WSL.
 
 ---
 
-## 4. Adapt Configuration to Your Machine
+## 2. Source and Canonical Home
 
-### 4.1 Replace all hardcoded paths in `config.toml`
+You may start from a clone under `/mnt/c/...`, but the canonical runtime home must end up here:
 
-Open `config.toml` and search for every occurrence of `MrThien`. Replace with your Windows username.
-
-```powershell
-# Preview all paths that need replacing
-Select-String -Path "C:\Users\$env:USERNAME\.codex\config.toml" -Pattern "MrThien"
+```bash
+~/.codex
 ```
 
-Key sections that contain absolute paths:
-
-```toml
-# MCP server launchers — each marked with ← EDIT in config.toml:
-[mcp_servers.gitnexus]
-command = "node"
-args = ['C:\Users\<YOUR_USERNAME>\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\index.js', "mcp"] # ← EDIT
-
-[mcp_servers.qdrant]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\qdrant\\run-qdrant-mcp.cmd" # ← EDIT
-
-[mcp_servers.semantic_qdrant_http]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\semantic\\run-semantic-qdrant-stdio.cmd" # ← EDIT
-
-[mcp_servers.mempalace]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd" # ← EDIT
-```
-
-### 4.2 Update trusted project paths
-
-In `config.toml`, the `[projects.'...']` entries list paths Codex treats as trusted. Replace or remove entries that are specific to the original machine:
-
-```toml
-[projects.'D:\DoAn2\VSmartwatch']
-trust_level = "trusted"
-```
-
-Add your own project paths as needed.
+If you already have a working copy on the Windows filesystem, the bootstrap script will back up any existing `~/.codex` and copy the workspace there.
 
 ---
 
-## 5. Set Up Local MCP Servers (`mcp/`)
+## 3. Bootstrap the WSL Runtime
 
-> [!WARNING]
-> The `mcp/` directory is **excluded from Git** (see `.gitignore`). It is **not cloned** — you must set it up manually on each machine.
-> The repository includes a **`mcp_template/`** folder with all necessary launcher scripts and the semantic adapter source.
+Run this once from inside WSL:
 
-### 5.1 Bootstrap `mcp/` from the template
+If the workspace is already at `~/.codex`:
 
-```powershell
-$src = "C:\Users\$env:USERNAME\.codex\mcp_template"
-$dst = "C:\Users\$env:USERNAME\.codex\mcp"
-
-# Create mcp/ sub-directories
-New-Item -Force -ItemType Directory "$dst\qdrant"
-New-Item -Force -ItemType Directory "$dst\semantic"
-New-Item -Force -ItemType Directory "$dst\mempalace"
-
-# Copy launchers and source files from the template
-Copy-Item "$src\qdrant\*"    "$dst\qdrant\"
-Copy-Item "$src\semantic\*"  "$dst\semantic\"
-Copy-Item "$src\mempalace\*" "$dst\mempalace\"
+```bash
+bash ~/.codex/scripts/wsl-setup.sh
 ```
 
-After copying, `mcp/` will have:
+If you are migrating from a Windows filesystem clone, for example:
 
-| Path | What it is |
+```bash
+bash /mnt/c/Users/<your-user>/.codex/scripts/wsl-setup.sh
+```
+
+The script performs these steps:
+
+1. updates `~/.bash_profile` and `~/.bashrc` with the WSL Codex bootstrap block
+2. copies the workspace into `~/.codex`
+3. installs or activates `nvm` and Node.js LTS
+4. installs `@openai/codex` in the WSL npm environment
+5. installs RTK when possible
+6. syncs the runtime skills into `~/.codex/.agents/skills` and `$HOME/.agents/skills`
+7. bootstraps `~/.codex/mcp` from `mcp_template/`
+8. skips Node MCP reinstalls when local launcher binaries are already present
+9. runs config and runtime verification
+
+---
+
+## 4. Runtime Skills
+
+The repository keeps two distinct skill surfaces:
+
+| Path | Role |
 |---|---|
-| `mcp/qdrant/run-qdrant-mcp.cmd` | Upstream Qdrant MCP server launcher |
-| `mcp/semantic/run-semantic-qdrant-stdio.cmd` | Semantic adapter launcher (used by Codex via stdio) |
-| `mcp/semantic/run-semantic-qdrant-http.cmd` | Semantic adapter launcher (HTTP, manual/debug use) |
-| `mcp/semantic/semantic_qdrant_http.py` | Semantic adapter source |
-| `mcp/semantic/repo-index.py` | Generic repo indexer — one-shot or `--watch` mode |
-| `mcp/mempalace/run-mempalace-mcp.cmd` | MemPalace MCP server launcher |
+| `skills/` | Curated source library, catalog, manifest, maintainer material |
+| `.agents/skills/` | Repo-local runtime discovery surface |
+| `$HOME/.agents/skills` | User-scope runtime discovery surface |
 
-### 5.2 Install the Python venv and dependencies
+Refresh the runtime mirror after changing the curated library:
 
-The `qdrant` and `semantic` servers share a single Python venv located at `mcp/qdrant/`:
+```bash
+bash ~/.codex/scripts/sync-runtime-skills.sh
+```
 
-```powershell
-$venv = "C:\Users\$env:USERNAME\.codex\mcp\qdrant"
+---
 
-# Create the venv
-python -m venv $venv
+## 5. Local MCP Bootstrap
 
-# Install all required packages
-& "$venv\Scripts\pip" install fastmcp qdrant-client mcp-server-qdrant
+`mcp/` is machine-local and gitignored. Do not commit it.
 
-# Install watchdog (optional — only needed for --watch mode)
-& "$venv\Scripts\pip" install watchdog
+The published source of truth is [`mcp_template/`](../mcp_template). Bootstrap the local runtime with:
+
+```bash
+bash ~/.codex/scripts/bootstrap-mcp-wsl.sh
+```
+
+That script:
+
+- creates `~/.codex/mcp/qdrant`, `~/.codex/mcp/semantic`, and `~/.codex/mcp/mempalace`,
+- copies the published WSL launchers and Python sources from `mcp_template/`,
+- creates Linux `bin/` virtual environments,
+- installs Qdrant MCP dependencies,
+- installs MemPalace into its own local venv, preferring the local clone at `.tmp/mempalace` when available.
+- skips the Node MCP reinstall path when `~/.codex/mcp/npm/node_modules/.bin/*` is already populated.
+
+### MCP server layout
+
+| Server | Launch path |
+|---|---|
+| `memory` | `~/.codex/scripts/run-with-nvm.sh npx -y @modelcontextprotocol/server-memory` |
+| `playwright` | `~/.codex/scripts/run-with-nvm.sh npx -y @playwright/mcp@latest --extension` |
+| `sequential-thinking` | `~/.codex/scripts/run-with-nvm.sh npx -y @modelcontextprotocol/server-sequential-thinking` |
+| `gitnexus` | `~/.codex/scripts/run-with-nvm.sh npx -y gitnexus@latest mcp` |
+| `qdrant` | `~/.codex/mcp/qdrant/run-qdrant-mcp.sh` |
+| `semantic_qdrant_http` | `~/.codex/mcp/semantic/run-semantic-qdrant-stdio.sh` |
+| `mempalace` | `~/.codex/mcp/mempalace/run-mempalace-mcp.sh` |
+
+---
+
+## 6. Backends for Semantic Search
+
+`semantic_qdrant_http` requires both Qdrant and Ollama.
+
+Minimum local endpoints:
+
+- Qdrant: `http://127.0.0.1:6333/healthz`
+- Ollama: `http://127.0.0.1:11434/api/tags`
+
+You can run them however you prefer, but the workspace assumes those localhost endpoints.
+
+Typical Docker Qdrant startup:
+
+```bash
+docker run -d --name codex-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_data:/qdrant/storage qdrant/qdrant
+```
+
+Typical Ollama setup:
+
+```bash
+ollama serve
+ollama pull qwen3-embedding:0.6b
 ```
 
 > [!NOTE]
-> The `memory`, `playwright`, `sequential-thinking`, `context7`, `github`, `exa` MCP servers do **not** require `mcp/` setup — they use `npx` or remote URLs and install automatically on first use.
-
-### 5.3 Install MemPalace
-
-```powershell
-pip install mempalace
-```
-
-`run-mempalace-mcp.cmd` uses the global `python` (or the venv activated by the system PATH).
-
-### 5.4 Start backend services in Docker (Qdrant + Ollama)
-
-Before the semantic adapter can work, start its dependencies.
-
-> [!IMPORTANT]
-> Both Qdrant and Ollama should be run in Docker for this install flow.
-> Do **not** install Ollama separately on the host machine for these steps.
-> This install flow expects GPU acceleration to be available for Ollama because the embedding model should run with GPU support.
-
-```powershell
-# 1. Start Ollama in Docker
-#    Then exec into the container and pull the required embedding model (0.6 GB)
-docker run -d -p 11434:11434 `
-    --name ollama `
-    -v ollama_data:/root/.ollama `
-    ollama/ollama
-
-docker exec -it ollama ollama pull qwen3-embedding:0.6b
-
-# 2. Start Qdrant in Docker with a persistent volume
-docker run -d -p 6333:6333 -p 6334:6334 `
-    --name qdrant `
-    -v qdrant_data:/qdrant/storage `
-    qdrant/qdrant
-```
-
-### 5.5 Index your repos into Qdrant
-
-Use `repo-index.py` to populate Qdrant with embeddings for your codebase.
-
-**One-shot index** (index once and exit):
-
-```powershell
-$python = "C:\Users\$env:USERNAME\.codex\mcp\qdrant\Scripts\python.exe"
-$script = "C:\Users\$env:USERNAME\.codex\mcp\semantic\repo-index.py"
-
-# Index a Dart/Flutter repo (default extensions: .dart)
-& $python $script --repo "D:\MyProject\health_system" --subdir lib
-
-# Index a Python repo
-& $python $script --repo "D:\MyProject\backend" --exts .py
-
-# Index a TypeScript repo (no subdirectory filter)
-& $python $script --repo "D:\MyProject\frontend" --exts .ts,.tsx
-```
-
-**Watch mode** (auto-update Qdrant on every file save):
-
-```powershell
-# Keeps running in background — re-indexes changed files automatically
-& $python $script --repo "D:\MyProject\health_system" --subdir lib --watch
-```
-
-The collection name defaults to `semantic-<repo-folder-name>` and is auto-discovered by the semantic adapter.
-
-**Indexing multiple repos:**
-
-```powershell
-@(
-    @{repo="D:\MyProject\health_system"; subdir="lib"; exts=".dart"},
-    @{repo="D:\MyProject\backend"; subdir=""; exts=".py"},
-    @{repo="D:\MyProject\frontend"; subdir="src"; exts=".ts,.tsx"}
-) | ForEach-Object {
-    & $python $script --repo $_.repo --subdir $_.subdir --exts $_.exts
-}
-```
-
-### 5.6 Install `gitnexus` globally
-
-```powershell
-npm install -g gitnexus
-```
-
-Verify:
-
-```powershell
-node "C:\Users\$env:USERNAME\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\index.js" --version
-```
+> The workspace no longer blocks unrelated tasks when Qdrant or Ollama are down. Semantic search is checked only when needed.
 
 ---
 
-## 6. Verify Hook Scripts
+## 7. Verification
 
-```powershell
-ls "C:\Users\$env:USERNAME\.codex\hooks\"
+### Static checks
+
+```bash
+python3 ~/.codex/scripts/config-lint.py
+sh -n ~/.codex/hooks/session-start.sh ~/.codex/hooks/user-prompt-submit.sh ~/.codex/scripts/*.sh ~/.codex/mcp_template/*/*.sh
+python3 -m py_compile ~/.codex/hooks/*.py ~/.codex/scripts/*.py
+python3 -m unittest discover -s ~/.codex/tests -p 'test_*.py'
 ```
 
-All scripts referenced by `hooks.json` must exist. Expected active files:
-- `session-start.ps1`
-- `user-prompt-submit.ps1`
-- `pre_tool_use.py`
-- `post_tool_use.py`
-- `stop.py`
+### Runtime verification
 
-> [!IMPORTANT]
-> The current `hooks.json` configuration executes local PowerShell and Python entrypoints from the repository itself. Verify PowerShell and Python are available instead of checking for any separate Bash shell.
-
----
-
-## 7. Post-Install Verification Checklist
-
-Run these checks after setup:
-
-```powershell
-# 1. Confirm required files exist
-$base = "C:\Users\$env:USERNAME\.codex"
-@("AGENTS.md","config.toml","hooks.json",".gitignore") | ForEach-Object {
-    $p = Join-Path $base $_
-    if (Test-Path $p) { Write-Host "OK  $_" } else { Write-Host "MISSING  $_" }
-}
-
-# 2. Confirm required directories exist
-@("agents","hooks","skills","rules","docs") | ForEach-Object {
-    $p = Join-Path $base $_
-    if (Test-Path $p) { Write-Host "OK  $_\" } else { Write-Host "MISSING  $_\" }
-}
-
-# 3. Confirm no hardcoded MrThien paths remain
-Select-String -Path "$base\config.toml" -Pattern "MrThien"
-# Expected: no output (zero matches)
-
-# 4. Confirm node is available
-node --version
-
-# 5. Confirm python is available
-python --version
-
-# 6. Confirm PowerShell hook entrypoints are invokable
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\$env:USERNAME\.codex\hooks\session-start.ps1"
+```bash
+python3 ~/.codex/scripts/verify-wsl-runtime.py
+codex features list
+codex mcp list
 ```
 
----
+Expected outcomes:
 
-## 8. Recommended Operational Discipline
-
-After installation:
-- keep `mcp/` and other local runtime directories fully ignored — never commit them,
-- avoid mixing reference clones into the main source surface,
-- prefer deliberate documentation updates over ad hoc notes,
-- keep configuration changes reviewable and minimal,
-- update `[projects.'...']` in `config.toml` for each new project you want Codex to trust.
+- `config-lint.py` passes with no Windows-native paths or `persistent_instructions`
+- `codex_hooks` is enabled
+- runtime skills exist at `$HOME/.agents/skills`
+- all local MCP launchers resolve under `~/.codex`
+- `github` may report `auth_missing` until `GITHUB_TOKEN` is set
 
 ---
 
-## 9. Related Documents
+## 8. GitHub Token
 
-- Main overview: [`README.md`](../README.md)
-- Vietnamese overview: [`README.vi.md`](../README.vi.md)
-- English structure guide: [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md)
-- Vietnamese structure guide: [`PROJECT_STRUCTURE.vi.md`](PROJECT_STRUCTURE.vi.md)
+To enable the `github` MCP server in WSL, store the token in the loader file that the WSL shell bootstrap reads:
+
+```bash
+read -rsp "GitHub token: " GITHUB_TOKEN && echo
+mkdir -p ~/.config/codex/env
+printf '%s' "$GITHUB_TOKEN" > ~/.config/codex/env/github_token
+chmod 600 ~/.config/codex/env/github_token
+unset GITHUB_TOKEN
+source ~/.bashrc
+```
+
+Quick verification:
+
+```bash
+test -n "${GITHUB_TOKEN:-}" && echo GITHUB_TOKEN_set
+codex mcp list
+```
+
+The `github` row should stop reporting `auth_missing`.
+
+> [!NOTE]
+> `UserPromptSubmit` now runs through `~/.codex/hooks/user_prompt_submit.py`, which emits JSON `hookSpecificOutput.additionalContext`. Keep that file in sync with `hooks.json` if you customize the prompt-injection behavior.
+
+---
+
+## 9. Launching Codex
+
+Inside WSL:
+
+```bash
+bash ~/.codex/scripts/launch-codex-rtk.sh
+```
+
+From Windows PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\<your-user>\.codex\scripts\launch-codex-rtk.ps1
+```
+
+That PowerShell script does not run Codex natively on Windows. It only calls `wsl.exe ... ~/.codex/scripts/launch-codex-rtk.sh`.

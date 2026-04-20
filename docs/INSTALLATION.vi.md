@@ -1,314 +1,225 @@
 # Hướng dẫn cài đặt
 
-Tài liệu này chứa quy trình cài đặt và setup chi tiết cho workspace Codex.
+Workspace này được hỗ trợ theo mô hình **WSL2-first**.
 
-Nó được tách khỏi [`README.md`](../README.md) để trang giới thiệu chính gọn hơn.
+Trạng thái mục tiêu là:
 
----
-
-## 1. Mục tiêu của việc setup
-
-Mục tiêu của quy trình cài đặt là làm cho repository này hoạt động như một workspace Codex ổn định với:
-- runtime configuration đúng,
-- hook wiring hoạt động,
-- role agent có thể tái sử dụng,
-- skill được tuyển chọn,
-- ranh giới rõ ràng giữa source file và local runtime data.
+- Codex home chuẩn ở `~/.codex`,
+- runtime skills trong repo ở `./.agents/skills`,
+- runtime skills cấp user ở `$HOME/.agents/skills`,
+- launcher MCP và Python venv cục bộ ở `~/.codex/mcp`,
+- Windows chỉ còn là bridge mỏng để launch vào WSL.
 
 ---
 
-## 2. Điều kiện tiên quyết
-
-Trước khi dùng workspace này, cần xác nhận các công cụ sau có sẵn trên máy:
+## 1. Yêu cầu
 
 | Yêu cầu | Ghi chú |
 |---|---|
-| **Windows 11** | Hệ điều hành chính được hỗ trợ |
-| **Git** | Để clone và quản lý version |
-| **Node.js ≥ 18** | Cần cho MCP servers (memory, playwright, sequential-thinking, gitnexus) |
-| **Python ≥ 3.10** | Cần cho hook scripts (`pre_tool_use.py`, `post_tool_use.py`, `stop.py`) |
-| **PowerShell 5+** | Có sẵn mặc định trên Windows 11 |
-| **Codex CLI** | Đã cài và xác thực với API key |
-| **Docker Desktop** | Bắt buộc để chạy Qdrant vector database (`mcp/semantic`) |
-| **Ollama** | Bắt buộc cài tại máy để tạo semantic embeddings (cần pull `qwen3-embedding:0.6b`) |
-
-> [!NOTE]
-> Hook runtime hiện tại của workspace này dùng PowerShell + Python là chính. Không cần shell Bash riêng cho cấu hình [`hooks.json`](hooks.json) đang hoạt động.
-
----
-
-## 3. Clone repository
-
-```powershell
-# Thay <your-username> bằng tên người dùng Windows của bạn
-git clone https://github.com/manhthien2005/codex-max.git C:\Users\<your-username>\.codex
-```
+| **WSL2 Ubuntu** | Runtime chính được hỗ trợ |
+| **Git** | Clone và cập nhật |
+| **Python 3.10+** | Hooks, bootstrap, MCP venv cục bộ |
+| **curl** | Các script bootstrap |
+| **Node.js LTS qua nvm** | Memory, Playwright, Sequential Thinking, GitNexus |
+| **Codex CLI** | Cài bên trong WSL |
+| **Docker** | Backend Qdrant |
+| **Ollama** | Backend embedding cho semantic search |
 
 > [!IMPORTANT]
-> Workspace **phải** nằm tại `C:\Users\<your-username>\.codex` để Codex tự nhận diện.
-> Codex sẽ tìm `AGENTS.md`, `config.toml`, và `hooks.json` tại đường dẫn này khi khởi động.
-
-Kiểm tra sau khi clone:
-
-```powershell
-ls C:\Users\$env:USERNAME\.codex
-```
-
-Các mục phải có ở cấp root: `AGENTS.md`, `config.toml`, `hooks.json`, `agents/`, `hooks/`, `skills/`, `.gitignore`.
+> Không còn nhắm tới runtime native Windows. Hãy dùng WSL làm runtime thật, còn PowerShell chỉ để handoff vào WSL.
 
 ---
 
-## 4. Điều chỉnh cấu hình cho máy của bạn
+## 2. Source và Canonical Home
 
-### 4.1 Thay toàn bộ đường dẫn cứng trong `config.toml`
+Bạn có thể bắt đầu từ một clone ở `/mnt/c/...`, nhưng home runtime chuẩn cuối cùng phải là:
 
-Mở `config.toml` và tìm mọi chỗ có `MrThien`. Thay bằng tên người dùng Windows của bạn.
-
-```powershell
-# Xem trước tất cả đường dẫn cần thay
-Select-String -Path "C:\Users\$env:USERNAME\.codex\config.toml" -Pattern "MrThien"
+```bash
+~/.codex
 ```
 
-Các phần chứa đường dẫn tuyệt đối cần chỉnh:
-
-```toml
-# Launcher MCP server — mỗi dòng được đánh dấu ← EDIT trong config.toml:
-[mcp_servers.gitnexus]
-command = "node"
-args = ['C:\Users\<YOUR_USERNAME>\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\index.js', "mcp"] # ← EDIT
-
-[mcp_servers.qdrant]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\qdrant\\run-qdrant-mcp.cmd" # ← EDIT
-
-[mcp_servers.semantic_qdrant_http]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\semantic\\run-semantic-qdrant-stdio.cmd" # ← EDIT
-
-[mcp_servers.mempalace]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd" # ← EDIT
-```
-
-### 4.2 Cập nhật trusted project paths
-
-Trong `config.toml`, các mục `[projects.'...']` liệt kê các path mà Codex xem là tin cậy. Thay hoặc xóa các mục dành riêng cho máy gốc:
-
-```toml
-[projects.'D:\DoAn2\VSmartwatch']
-trust_level = "trusted"
-```
-
-Thêm các project path của bạn vào theo nhu cầu.
+Nếu đang có working copy trên Windows filesystem, script bootstrap sẽ backup `~/.codex` hiện tại rồi copy workspace sang đó.
 
 ---
 
-## 5. Cài đặt MCP Server cục bộ (`mcp/`)
+## 3. Bootstrap runtime WSL
 
-> [!WARNING]
-> Thư mục `mcp/` bị **loại khỏi Git** (xem `.gitignore`). Nó **không được clone** — bạn phải tự setup trên mỗi máy.
-> Repository bao gồm folder **`mcp_template/`** với toàn bộ launcher script và source semantic adapter cần thiết.
+Chạy một lần trong WSL:
 
-### 5.1 Bootstrap `mcp/` từ template
+Nếu workspace đã ở `~/.codex`:
 
-```powershell
-$src = "C:\Users\$env:USERNAME\.codex\mcp_template"
-$dst = "C:\Users\$env:USERNAME\.codex\mcp"
-
-# Tạo các sub-directory
-New-Item -Force -ItemType Directory "$dst\qdrant"
-New-Item -Force -ItemType Directory "$dst\semantic"
-New-Item -Force -ItemType Directory "$dst\mempalace"
-
-# Copy launcher và source từ template
-Copy-Item "$src\qdrant\*"    "$dst\qdrant\"
-Copy-Item "$src\semantic\*"  "$dst\semantic\"
-Copy-Item "$src\mempalace\*" "$dst\mempalace\"
+```bash
+bash ~/.codex/scripts/wsl-setup.sh
 ```
 
-Sau khi copy, `mcp/` sẽ có:
+Nếu đang migrate từ clone trên Windows filesystem, ví dụ:
 
-| Đường dẫn | Mô tả |
+```bash
+bash /mnt/c/Users/<your-user>/.codex/scripts/wsl-setup.sh
+```
+
+Script sẽ:
+
+1. cập nhật `~/.bash_profile` và `~/.bashrc` với block bootstrap của Codex
+2. copy workspace sang `~/.codex`
+3. cài hoặc kích hoạt `nvm` và Node.js LTS
+4. cài `@openai/codex` trong môi trường npm của WSL
+5. cài RTK nếu có thể
+6. sync runtime skills vào `~/.codex/.agents/skills` và `$HOME/.agents/skills`
+7. bootstrap `~/.codex/mcp` từ `mcp_template/`
+8. bỏ qua Node MCP reinstall nếu local launcher binary đã có sẵn
+9. chạy verify config và runtime
+
+---
+
+## 4. Runtime Skills
+
+Repository có hai bề mặt skill tách biệt:
+
+| Đường dẫn | Vai trò |
 |---|---|
-| `mcp/qdrant/run-qdrant-mcp.cmd` | Launcher Qdrant MCP server (upstream) |
-| `mcp/semantic/run-semantic-qdrant-stdio.cmd` | Launcher semantic adapter (Codex dùng via stdio) |
-| `mcp/semantic/run-semantic-qdrant-http.cmd` | Launcher semantic adapter (HTTP, debug thủ công) |
-| `mcp/semantic/semantic_qdrant_http.py` | Source semantic adapter |
-| `mcp/semantic/repo-index.py` | Indexer repo generic — one-shot hoặc `--watch` |
-| `mcp/mempalace/run-mempalace-mcp.cmd` | Launcher MemPalace MCP server |
+| `skills/` | Thư viện source, catalog, manifest, maintainer material |
+| `.agents/skills/` | Bề mặt runtime để Codex discover trong repo |
+| `$HOME/.agents/skills` | Bề mặt runtime cấp user |
 
-### 5.2 Cài Python venv và dependencies
+Sau khi chỉnh curated library, làm mới runtime mirror bằng:
 
-Cả hai server `qdrant` và `semantic` dùng chung một Python venv ở `mcp/qdrant/`:
+```bash
+bash ~/.codex/scripts/sync-runtime-skills.sh
+```
 
-```powershell
-$venv = "C:\Users\$env:USERNAME\.codex\mcp\qdrant"
+---
 
-# Tạo venv
-python -m venv $venv
+## 5. Bootstrap MCP cục bộ
 
-# Cài các package cần thiết
-& "$venv\Scripts\pip" install fastmcp qdrant-client mcp-server-qdrant
+`mcp/` là local-only và gitignored. Không được commit.
 
-# Cài watchdog (tùy chọn — chỉ cần nếu dùng --watch mode)
-& "$venv\Scripts\pip" install watchdog
+Nguồn publish chuẩn là [`mcp_template/`](../mcp_template). Bootstrap runtime cục bộ bằng:
+
+```bash
+bash ~/.codex/scripts/bootstrap-mcp-wsl.sh
+```
+
+Script này sẽ:
+
+- tạo `~/.codex/mcp/qdrant`, `~/.codex/mcp/semantic`, và `~/.codex/mcp/mempalace`,
+- copy launcher WSL và Python source đã publish từ `mcp_template/`,
+- tạo Linux virtual environment dùng `bin/`,
+- cài dependency cho Qdrant MCP,
+- cài MemPalace vào venv riêng, ưu tiên local clone ở `.tmp/mempalace` nếu có.
+- bỏ qua nhánh Node MCP reinstall nếu `~/.codex/mcp/npm/node_modules/.bin/*` đã sẵn.
+
+### Bố cục launcher MCP
+
+| Server | Launch path |
+|---|---|
+| `memory` | `~/.codex/scripts/run-with-nvm.sh npx -y @modelcontextprotocol/server-memory` |
+| `playwright` | `~/.codex/scripts/run-with-nvm.sh npx -y @playwright/mcp@latest --extension` |
+| `sequential-thinking` | `~/.codex/scripts/run-with-nvm.sh npx -y @modelcontextprotocol/server-sequential-thinking` |
+| `gitnexus` | `~/.codex/scripts/run-with-nvm.sh npx -y gitnexus@latest mcp` |
+| `qdrant` | `~/.codex/mcp/qdrant/run-qdrant-mcp.sh` |
+| `semantic_qdrant_http` | `~/.codex/mcp/semantic/run-semantic-qdrant-stdio.sh` |
+| `mempalace` | `~/.codex/mcp/mempalace/run-mempalace-mcp.sh` |
+
+---
+
+## 6. Backend cho semantic search
+
+`semantic_qdrant_http` cần cả Qdrant và Ollama.
+
+Các endpoint tối thiểu:
+
+- Qdrant: `http://127.0.0.1:6333/healthz`
+- Ollama: `http://127.0.0.1:11434/api/tags`
+
+Bạn có thể chạy chúng theo cách mình muốn, miễn là các endpoint localhost trên hoạt động đúng.
+
+Ví dụ chạy Qdrant bằng Docker:
+
+```bash
+docker run -d --name codex-qdrant -p 6333:6333 -p 6334:6334 -v qdrant_data:/qdrant/storage qdrant/qdrant
+```
+
+Ví dụ chạy Ollama:
+
+```bash
+ollama serve
+ollama pull qwen3-embedding:0.6b
 ```
 
 > [!NOTE]
-> Các MCP server `memory`, `playwright`, `sequential-thinking`, `context7`, `github`, `exa` **không** cần setup `mcp/` — chúng dùng `npx` hoặc remote URL và tự cài khi dùng lần đầu.
-
-### 5.3 Cài MemPalace
-
-```powershell
-pip install mempalace
-```
-
-`run-mempalace-mcp.cmd` dùng `python` toàn cục (hoặc venv được kích hoạt trong PATH).
-
-### 5.4 Khởi động service nền tảng trong Docker (Qdrant + Ollama)
-
-Trước khi semantic adapter có thể hoạt động, cần chạy các phụ thuộc sau.
-
-> [!IMPORTANT]
-> Trong luồng cài đặt này, cả Qdrant và Ollama đều phải chạy trong Docker.
-> Không cài Ollama riêng trên máy host cho các bước bên dưới để tránh cài nhầm và lệch môi trường.
-> Luồng cài đặt này giả định Ollama có GPU support, vì model embedding nên chạy với tăng tốc GPU.
-
-```powershell
-# 1. Chạy Ollama trong Docker
-#    Sau đó exec vào container để tải model embedding bắt buộc (0.6 GB)
-docker run -d -p 11434:11434 `
-    --name ollama `
-    -v ollama_data:/root/.ollama `
-    ollama/ollama
-
-docker exec -it ollama ollama pull qwen3-embedding:0.6b
-
-# 2. Chạy Qdrant trong Docker với volume liên tục
-docker run -d -p 6333:6333 -p 6334:6334 `
-    --name qdrant `
-    -v qdrant_data:/qdrant/storage `
-    qdrant/qdrant
-```
-
-### 5.5 Index repo vào Qdrant
-
-Dùng `repo-index.py` để đưa các repo vào Qdrant (bước bắt buộc trước khi tìm kiếm bằng semantic).
-
-**One-shot index** (index một lần rồi thoát):
-
-```powershell
-$python = "C:\Users\$env:USERNAME\.codex\mcp\qdrant\Scripts\python.exe"
-$script = "C:\Users\$env:USERNAME\.codex\mcp\semantic\repo-index.py"
-
-# Index repo Dart/Flutter
-& $python $script --repo "D:\MyProject\health_system" --subdir lib
-
-# Index repo Python
-& $python $script --repo "D:\MyProject\backend" --exts .py
-
-# Index repo TypeScript
-& $python $script --repo "D:\MyProject\frontend" --exts .ts,.tsx
-```
-
-**Watch mode** (tự cập nhật Qdrant khi file thay đổi):
-
-```powershell
-# Chạy liên tục — tự re-index file được sửa mỗi khi save
-& $python $script --repo "D:\MyProject\health_system" --subdir lib --watch
-```
-
-Tên collection mặc định là `semantic-<tên-folder-repo>` và semantic adapter tự detect.
-
-**Index nhiều repo cùng lúc:**
-
-```powershell
-@(
-    @{repo="D:\MyProject\health_system"; subdir="lib"; exts=".dart"},
-    @{repo="D:\MyProject\backend"; subdir=""; exts=".py"},
-    @{repo="D:\MyProject\frontend"; subdir="src"; exts=".ts,.tsx"}
-) | ForEach-Object {
-    & $python $script --repo $_.repo --subdir $_.subdir --exts $_.exts
-}
-```
-
-### 5.6 Cài `gitnexus` toàn cục
-
-```powershell
-npm install -g gitnexus
-```
-
-Kiểm tra:
-
-```powershell
-node "C:\Users\$env:USERNAME\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\index.js" --version
-```
+> Workspace không còn chặn các task không liên quan khi Qdrant hay Ollama đang down. Semantic search chỉ được check khi thực sự cần.
 
 ---
 
-## 6. Kiểm tra hook scripts
+## 7. Verify
 
-```powershell
-ls "C:\Users\$env:USERNAME\.codex\hooks\"
+### Static checks
+
+```bash
+python3 ~/.codex/scripts/config-lint.py
+sh -n ~/.codex/hooks/session-start.sh ~/.codex/hooks/user-prompt-submit.sh ~/.codex/scripts/*.sh ~/.codex/mcp_template/*/*.sh
+python3 -m py_compile ~/.codex/hooks/*.py ~/.codex/scripts/*.py
+python3 -m unittest discover -s ~/.codex/tests -p 'test_*.py'
 ```
 
-Tất cả script được `hooks.json` tham chiếu phải tồn tại. Các file active cần có:
-- `session-start.ps1`
-- `user-prompt-submit.ps1`
-- `pre_tool_use.py`
-- `post_tool_use.py`
-- `stop.py`
+### Verify runtime
 
-> [!IMPORTANT]
-> Cấu hình `hooks.json` hiện tại gọi trực tiếp các entrypoint PowerShell và Python trong repo. Hãy xác nhận PowerShell và Python có sẵn thay vì kiểm tra `sh`.
-
----
-
-## 7. Checklist verify sau khi cài đặt
-
-Chạy các lệnh sau để xác nhận mọi thứ đúng:
-
-```powershell
-# 1. Kiểm tra các file bắt buộc tồn tại
-$base = "C:\Users\$env:USERNAME\.codex"
-@("AGENTS.md","config.toml","hooks.json",".gitignore") | ForEach-Object {
-    $p = Join-Path $base $_
-    if (Test-Path $p) { Write-Host "OK  $_" } else { Write-Host "MISSING  $_" }
-}
-
-# 2. Kiểm tra các thư mục bắt buộc tồn tại
-@("agents","hooks","skills","rules","docs") | ForEach-Object {
-    $p = Join-Path $base $_
-    if (Test-Path $p) { Write-Host "OK  $_\" } else { Write-Host "MISSING  $_\" }
-}
-
-# 3. Xác nhận không còn đường dẫn cứng MrThien
-Select-String -Path "$base\config.toml" -Pattern "MrThien"
-# Kỳ vọng: không có output (zero matches)
-
-# 4. Kiểm tra node
-node --version
-
-# 5. Kiểm tra python
-python --version
-
-# 6. Kiểm tra có thể gọi PowerShell hook entrypoint
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\$env:USERNAME\.codex\hooks\session-start.ps1"
+```bash
+python3 ~/.codex/scripts/verify-wsl-runtime.py
+codex features list
+codex mcp list
 ```
 
----
+Kỳ vọng:
 
-## 8. Kỷ luật vận hành được khuyến nghị
-
-Sau khi cài xong:
-- luôn giữ `mcp/` và các thư mục runtime cục bộ ở trạng thái ignored — không được commit,
-- không trộn reference clone vào source surface chính,
-- ưu tiên cập nhật tài liệu có chủ đích thay vì note rời rạc,
-- giữ thay đổi cấu hình ở mức tối thiểu và dễ review,
-- cập nhật `[projects.'...']` trong `config.toml` cho mỗi project mới cần Codex tin cậy.
+- `config-lint.py` pass, không còn path Windows-native hoặc `persistent_instructions`
+- `codex_hooks` đang bật
+- runtime skills tồn tại ở `$HOME/.agents/skills`
+- toàn bộ local MCP launcher trỏ về `~/.codex`
+- `github` có thể báo `auth_missing` cho tới khi export `GITHUB_TOKEN`
 
 ---
 
-## 9. Tài liệu liên quan
+## 8. GITHUB_TOKEN cho GitHub MCP
 
-- Tổng quan chính: [`README.md`](../README.md)
-- Tổng quan tiếng Việt: [`README.vi.md`](../README.vi.md)
-- Tài liệu cấu trúc tiếng Anh: [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md)
-- Tài liệu cấu trúc tiếng Việt: [`PROJECT_STRUCTURE.vi.md`](PROJECT_STRUCTURE.vi.md)
+Để bật `github` MCP trong WSL, lưu token vào file loader mà bootstrap shell của WSL sẽ đọc:
+
+```bash
+read -rsp "GitHub token: " GITHUB_TOKEN && echo
+mkdir -p ~/.config/codex/env
+printf '%s' "$GITHUB_TOKEN" > ~/.config/codex/env/github_token
+chmod 600 ~/.config/codex/env/github_token
+unset GITHUB_TOKEN
+source ~/.bashrc
+```
+
+Kiểm tra nhanh:
+
+```bash
+test -n "${GITHUB_TOKEN:-}" && echo GITHUB_TOKEN_set
+codex mcp list
+```
+
+Dòng `github` sẽ không còn báo `auth_missing`.
+
+> [!NOTE]
+> `UserPromptSubmit` giờ chạy qua `~/.codex/hooks/user_prompt_submit.py` và phát JSON `hookSpecificOutput.additionalContext`. Nếu anh tùy biến phần inject prompt, nhớ giữ file này đồng bộ với `hooks.json`.
+
+---
+
+## 9. Chạy Codex
+
+Trong WSL:
+
+```bash
+bash ~/.codex/scripts/launch-codex-rtk.sh
+```
+
+Từ Windows PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\<your-user>\.codex\scripts\launch-codex-rtk.ps1
+```
+
+Script PowerShell đó không chạy Codex native trên Windows. Nó chỉ gọi `wsl.exe ... ~/.codex/scripts/launch-codex-rtk.sh`.

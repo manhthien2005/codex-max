@@ -26,8 +26,8 @@ cache/
 tmp/
 
 # ── MCP servers (machine-local binaries/venvs, gitignored) ─────────────────
-# mcp/ contains Python venvs (~305 MB) and launcher scripts.
-# Launcher .cmd files are machine-specific (hardcoded paths) — see INSTALLATION.md.
+# mcp/ contains WSL-local Python venvs, launchers, and machine-local caches.
+# Publish launcher/source changes via mcp_template/ instead of committing mcp/.
 mcp/
 
 # ── Local runtime, sandbox, and session data ─────────────────────────────────

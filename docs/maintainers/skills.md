@@ -1,54 +1,32 @@
-# Maintainer Guide: Curated Skills Library
+# Maintainer Guide: Skills Library and Runtime Surface
 
-This document explains how to maintain the curated skill surface in this repository.
+This repository now separates the curated skill library from the runtime discovery surface.
 
-## Library layers
+## Layers
 
 | Layer | Path | Purpose |
 |---|---|---|
-| Runtime core / optional skills | `skills/` | Installed skills used directly by the workspace |
-| Maintainer-only skills | `skills/_maintainers/` | Curation and library-management workflows not meant for default runtime routing |
-| Source of truth | `skills/CATALOG.md`, `skills/manifest.yaml` | Human + machine-readable inventory |
+| Curated source library | `skills/` | Skill content, catalog, manifest, maintainer material |
+| Repo-local runtime surface | `.agents/skills/` | What Codex discovers from this repo |
+| User-scope runtime surface | `$HOME/.agents/skills` | Global skill discovery across repos |
+| Maintainer-only skills | `skills/_maintainers/` | Curation workflows, not default routing |
 
-## Classification model
+## Required updates
 
-Use these buckets:
+When you add or restructure a skill:
 
-- **active runtime** — part of the curated execution surface
-- **optional** — installed and available, but not default routing
-- **maintainer-only** — installed for library curation or maintenance only
-- **archive / defer** — not part of the current curated surface
-
-## Required files to update
-
-Whenever a skill is added, promoted, demoted, or rewritten, update at least:
-
-- `skills/CATALOG.md`
-- `skills/manifest.yaml`
-- `skills/README.md` if the visible surface changed
-- `docs/PROJECT_STRUCTURE.md`
-- `docs/PROJECT_STRUCTURE.vi.md`
-
-Update `AGENTS.md` or router skills only if routing behavior changes.
-
-## Recommended workflow
-
-1. Classify with `agent-sort`
-2. Apply structural changes with `manage-skills`
-3. Compact context at logical boundaries with `strategic-compact` if needed
-4. Run verification after each batch
+1. update `skills/CATALOG.md`
+2. update `skills/manifest.yaml`
+3. update `skills/README.md` if the visible surface changed
+4. run `bash scripts/sync-runtime-skills.sh`
+5. verify that `.agents/skills/` and `$HOME/.agents/skills` still resolve correctly
 
 ## Verification baseline
 
-Typical verification for this repository should include:
+Typical verification for the skills surface now includes:
 
-- Python compile checks for hook Python files
-- JSON parse check for `hooks.json`
-- content checks for catalog, manifest, and structure docs
-- smoke execution of PowerShell hook wrappers
+- `bash scripts/sync-runtime-skills.sh`
+- `test -L .agents/skills/<skill-name>` or `find .agents/skills -maxdepth 2 -name SKILL.md`
+- content checks for `skills/CATALOG.md` and `skills/manifest.yaml`
 
-## Notes
-
-- Maintainer-only skills should not be auto-loaded in normal routing
-- Optional skills may be installed without becoming default behavior
-- Keep the daily surface small and evidence-backed
+The runtime surface is symlink-based by design because this workspace now targets WSL/Linux as the primary runtime.

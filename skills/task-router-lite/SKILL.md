@@ -87,4 +87,4 @@ Before implementation, produce the readiness table required by workspace policy:
 ## Workspace fit
 
 This router exists because the workspace is curated.
-The runtime surface must stay aligned with `skills/README.md`, `skills/CATALOG.md`, and `skills/manifest.yaml`.
+The runtime surface must stay aligned with `.agents/skills/`, while the source library stays aligned with `skills/README.md`, `skills/CATALOG.md`, and `skills/manifest.yaml`.

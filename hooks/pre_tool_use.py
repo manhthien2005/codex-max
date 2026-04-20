@@ -19,6 +19,16 @@ from pathlib import Path
 import codex_hook_adapter as adapter
 
 
+def _plan_context(root: Path) -> str | None:
+    plan_file = adapter.find_plan_file(root)
+    if plan_file is None:
+        return None
+    excerpt = adapter.read_text_excerpt(plan_file, max_lines=16)
+    if not excerpt:
+        return None
+    return f"[planning-with-files] ACTIVE PLAN excerpt from {plan_file.name}:\n{excerpt}"
+
+
 # ── WSL / Windows path normalization ────────────────────────────────────────
 
 def _canonical_forms(path_str: str) -> set[str]:
@@ -54,7 +64,7 @@ _KNOWN_INDEXED: set[str] = {
     r"D:\DoAn2\VSmartwatch\healthguard-model-api",
 }
 
-# Session-level dedup: don't warn same repo more than once per session
+# Session-level dedup: don't warn same repo more than once per process
 _warned_repos: set[str] = set()
 
 
@@ -176,29 +186,29 @@ def _is_rtk_status_active() -> bool:
 def _classify_command(cmd: str) -> tuple[str, str]:
     """
     Returns (decision, reason):
-      decision: 'allow' | 'suggest_rtk'
+      decision: 'noop' | 'suggest_rtk'
       reason: explanation string
     """
     norm = cmd.strip()
 
     # Already RTK prefixed
     if norm.startswith("rtk "):
-        return "allow", "already_rtk"
+        return "noop", "already_rtk"
 
     # Composite shell → raw
     for token in _COMPOSITE_TOKENS:
         if token in norm:
-            return "allow", "composite_shell"
+            return "noop", "composite_shell"
 
     # Interactive → raw
     for ic in _INTERACTIVE_CMDS:
         if norm.startswith(ic):
-            return "allow", "interactive"
+            return "noop", "interactive"
 
     # Machine-readable flags → raw
     for flag in _MACHINE_READABLE_FLAGS:
         if flag in norm:
-            return "allow", "machine_readable"
+            return "noop", "machine_readable"
 
     # Check if it's a candidate for RTK
     tokens = norm.split()
@@ -206,7 +216,7 @@ def _classify_command(cmd: str) -> tuple[str, str]:
         if tuple(tokens[:len(prefix)]) == prefix:
             return "suggest_rtk", f"rtk_candidate:{' '.join(prefix)}"
 
-    return "allow", "not_rtk_candidate"
+    return "noop", "not_rtk_candidate"
 
 
 def _log_missed_opportunity(cmd: str, reason: str, shim_active: bool) -> None:
@@ -215,7 +225,7 @@ def _log_missed_opportunity(cmd: str, reason: str, shim_active: bool) -> None:
     try:
         _RTK_MISSED_LOG.parent.mkdir(parents=True, exist_ok=True)
         record = {
-            "ts": datetime.datetime.utcnow().isoformat() + "Z",
+            "ts": datetime.datetime.now(datetime.UTC).isoformat().replace("+00:00", "Z"),
             "command": cmd[:200],
             "rtk_reason": reason,
             "shim_active": shim_active,
@@ -288,6 +298,10 @@ def main() -> None:
 
     messages: list[str] = []
 
+    plan_msg = _plan_context(root)
+    if plan_msg:
+        messages.append(plan_msg)
+
     # RTK classification (non-blocking — just log missed opportunities)
     if cmd:
         rtk_active = _is_rtk_status_active()
@@ -310,14 +324,7 @@ def main() -> None:
             messages.append(gate_msg)
 
     if messages:
-        adapter.emit_json({
-            "decision": "allow",
-            "systemMessage": "\n\n".join(messages),
-        })
-        return
-
-    # Default: allow
-    adapter.emit_json({"decision": "allow"})
+        adapter.emit_json({"systemMessage": "\n\n".join(messages)})
 
 
 if __name__ == "__main__":

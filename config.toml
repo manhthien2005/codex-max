@@ -1,39 +1,25 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# MACHINE-SPECIFIC PATHS — must be updated for each new machine/user
-# Replace all occurrences of "MrThien" with your Windows username.
-# Lines marked ← EDIT are the ones requiring substitution.
+# WSL-FIRST CODEX HOME
+# Canonical runtime home: /home/<user>/.codex
+# This config intentionally avoids Windows-native launchers and trust entries.
 # See docs/INSTALLATION.md for the full setup checklist.
 # ─────────────────────────────────────────────────────────────────────────────
 model = "gpt-5.4"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 personality = "pragmatic"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
-web_search = "live"
-persistent_instructions = "Follow project AGENTS.md guidelines. Use available MCP servers when they can help."
-
-[windows]
-sandbox = "elevated"
+web_search = "cached"
+developer_instructions = "Follow AGENTS.md in the active repo. Prefer WSL-native tools and ~/.codex runtime assets. Use MCP servers when they help, but degrade gracefully when optional local services are unavailable."
 
 [features]
 multi_agent = true
+codex_hooks = true
 
-[projects.'\\?\UNC\wsl$\Ubuntu\home\mrthien\.config\opencode']
+[projects."/home/mrthien"]
 trust_level = "trusted"
 
-[projects.'D:\DoAn2\VSmartwatch\Iot_Simulator']
-trust_level = "trusted"
-
-[projects.'D:\DoAn2\VSmartwatch']
-trust_level = "trusted"
-
-[projects.'D:\DoAn2\VSmartwatch\health_system']
-trust_level = "trusted"
-
-[projects.'C:\Users\MrThien\.codex'] # ← EDIT: your .codex path
-trust_level = "trusted"
-
-[projects."/mnt/c/Users/MrThien"]
+[projects."/home/mrthien/.codex"]
 trust_level = "trusted"
 
 [mcp_servers.context7]
@@ -53,32 +39,33 @@ url = "https://mcp.exa.ai/mcp"
 approval_mode = "auto"
 
 [mcp_servers.memory]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-memory"]
-startup_timeout_sec = 30.0
+command = "bash"
+args = ["-lc", "~/.codex/scripts/run-with-nvm.sh ~/.codex/mcp/npm/node_modules/.bin/mcp-server-memory"]
+startup_timeout_sec = 60.0
 
 [mcp_servers.memory.tools."*"]
 approval_mode = "auto"
 
 [mcp_servers.playwright]
-command = "npx"
-args = ["-y", "@playwright/mcp@latest", "--extension"]
-startup_timeout_sec = 30.0
+command = "bash"
+args = ["-lc", "~/.codex/scripts/run-with-nvm.sh ~/.codex/mcp/npm/node_modules/.bin/playwright-mcp --extension"]
+startup_timeout_sec = 60.0
 
 [mcp_servers.playwright.tools."*"]
 approval_mode = "auto"
 
 [mcp_servers.sequential-thinking]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-startup_timeout_sec = 30.0
+command = "bash"
+args = ["-lc", "~/.codex/scripts/run-with-nvm.sh ~/.codex/mcp/npm/node_modules/.bin/mcp-server-sequential-thinking"]
+startup_timeout_sec = 60.0
 
 [mcp_servers.sequential-thinking.tools."*"]
 approval_mode = "auto"
 
 [mcp_servers.gitnexus]
-command = "node"
-args = ['C:\\Users\\MrThien\\AppData\\Roaming\\npm\\node_modules\\gitnexus\\dist\\cli\\index.js', "mcp"]
+command = "bash"
+args = ["-lc", "~/.codex/scripts/run-with-nvm.sh ~/.codex/mcp/npm/node_modules/.bin/gitnexus mcp"]
+startup_timeout_sec = 60.0
 
 [mcp_servers.gitnexus.tools."*"]
 approval_mode = "auto"
@@ -105,23 +92,24 @@ approval_mode = "approve"
 approval_mode = "approve"
 
 [mcp_servers.qdrant]
-command = "C:\\Users\\MrThien\\.codex\\mcp\\qdrant\\run-qdrant-mcp.cmd"
-args = []
+command = "bash"
+args = ["-lc", "~/.codex/mcp/qdrant/run-qdrant-mcp.sh"]
+startup_timeout_sec = 45.0
 
 [mcp_servers.qdrant.tools."*"]
 approval_mode = "auto"
 
 [mcp_servers.semantic_qdrant_http]
-command = "C:\\Users\\MrThien\\.codex\\mcp\\semantic\\run-semantic-qdrant-stdio.cmd"
-args = []
+command = "bash"
+args = ["-lc", "~/.codex/mcp/semantic/run-semantic-qdrant-stdio.sh"]
 startup_timeout_sec = 60.0
 
 [mcp_servers.semantic_qdrant_http.tools."*"]
 approval_mode = "auto"
 
 [mcp_servers.mempalace]
-command = "C:\\Users\\MrThien\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd"
-args = []
+command = "bash"
+args = ["-lc", "~/.codex/mcp/mempalace/run-mempalace-mcp.sh"]
 startup_timeout_sec = 120.0
 
 [mcp_servers.mempalace.tools."*"]
@@ -144,6 +132,11 @@ web_search = "cached"
 [profiles.yolo]
 approval_policy = "never"
 sandbox_mode = "workspace-write"
+web_search = "cached"
+
+[profiles.live-web]
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
 web_search = "live"
 
 [agents]
@@ -161,3 +154,6 @@ config_file = "agents/reviewer.toml"
 [agents.docs_researcher]
 description = "Documentation specialist that verifies APIs, framework behavior, and release notes."
 config_file = "agents/docs-researcher.toml"
+
+[plugins."github@openai-curated"]
+enabled = true

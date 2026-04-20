@@ -1,64 +1,74 @@
-# `mcp/` — Local MCP Server Template
+# `mcp_template/` — Published WSL MCP Source
 
-> This is a **template** for the `mcp/` directory that Codex uses to launch local MCP servers.
-> The real `mcp/` is gitignored (contains Python venvs ~305 MB and machine-local binaries).
-> Copy/adapt this template when setting up a new machine.
+This directory is the git-tracked source of truth for the local MCP runtime.
+
+It exists because the real `mcp/` directory is machine-local and gitignored. The workspace bootstraps `~/.codex/mcp` from this template instead of committing local venvs or host-specific launchers.
 
 ---
 
-## Directory layout
+## Model
 
-```
-mcp/
-├── qdrant/                      ← Upstream Qdrant MCP server (mcp-server-qdrant)
-│   ├── run-qdrant-mcp.cmd       ← Launcher — copy here after pip install
-│   └── (Scripts/ venv created by pip install)
-│
-├── semantic/                    ← Custom semantic adapter (multi-repo Ollama+Qdrant)
-│   ├── run-semantic-qdrant-stdio.cmd   ← Launcher for stdio transport (Codex uses this)
-│   ├── run-semantic-qdrant-http.cmd    ← Launcher for HTTP transport (manual/debug use)
-│   └── semantic_qdrant_http.py         ← Adapter source (copy from this template)
-│
-└── mempalace/                   ← MemPalace MCP server
-    └── run-mempalace-mcp.cmd    ← Launcher — works after pip install mempalace
+| Path | Role |
+|---|---|
+| `mcp_template/` | Published launcher/source templates |
+| `~/.codex/mcp/` | Local launchers, Linux venvs, caches, and adapter files |
+
+Bootstrap the local runtime with:
+
+```bash
+bash ~/.codex/scripts/bootstrap-mcp-wsl.sh
 ```
 
 ---
 
-## Quick setup (copy all launchers)
+## Contents
 
-```powershell
-# 1. Create mcp/ directories
-$base = "C:\Users\$env:USERNAME\.codex\mcp"
-New-Item -Force -ItemType Directory "$base\qdrant"
-New-Item -Force -ItemType Directory "$base\semantic"
-New-Item -Force -ItemType Directory "$base\mempalace"
-
-# 2. Copy launchers from mcp_template/
-Copy-Item mcp_template\qdrant\run-qdrant-mcp.cmd        "$base\qdrant\"
-Copy-Item mcp_template\semantic\run-semantic-qdrant-stdio.cmd  "$base\semantic\"
-Copy-Item mcp_template\semantic\run-semantic-qdrant-http.cmd   "$base\semantic\"
-Copy-Item mcp_template\semantic\semantic_qdrant_http.py  "$base\semantic\"
-Copy-Item mcp_template\mempalace\run-mempalace-mcp.cmd   "$base\mempalace\"
+```text
+mcp_template/
+├── README.md
+├── mempalace/
+│   └── run-mempalace-mcp.sh
+├── qdrant/
+│   └── run-qdrant-mcp.sh
+├── semantic/
+│   ├── repo-index.py
+│   ├── run-semantic-qdrant-stdio.sh
+│   └── semantic_qdrant_http.py
+└── README.md
 ```
 
-Then follow each server's full install instructions below (see `qdrant/`, `semantic/`, `mempalace/`).
+### Notes
+
+- `qdrant/` publishes the WSL launcher for the upstream Qdrant MCP server.
+- `semantic/` publishes the semantic adapter source and its stdio launcher.
+- `mempalace/` publishes the WSL launcher that prefers a local venv when present.
+- `~/.codex/mcp/npm/` is still part of the runtime result, even though its packages are not committed here.
+
+Legacy `.cmd` launchers may still exist in historical branches or ignored local runtimes, but they are no longer the active target for this workspace.
 
 ---
 
-## Relationship to `config.toml`
+## Local Bootstrap Result
 
-`config.toml` references these launchers with absolute paths:
+After running the bootstrap script, the local runtime should look like this:
 
-```toml
-[mcp_servers.qdrant]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\qdrant\\run-qdrant-mcp.cmd"
-
-[mcp_servers.semantic_qdrant_http]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\semantic\\run-semantic-qdrant-stdio.cmd"
-
-[mcp_servers.mempalace]
-command = "C:\\Users\\<YOUR_USERNAME>\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd"
+```text
+~/.codex/mcp/
+├── npm/
+│   ├── node_modules/
+│   └── package.json
+├── mempalace/
+│   ├── bin/
+│   └── run-mempalace-mcp.sh
+├── qdrant/
+│   ├── bin/
+│   └── run-qdrant-mcp.sh
+└── semantic/
+    ├── repo-index.py
+    ├── run-semantic-qdrant-stdio.sh
+    └── semantic_qdrant_http.py
 ```
 
-Replace `<YOUR_USERNAME>` with your Windows username in `config.toml` after cloning.
+The bootstrap is idempotent: it refreshes published launchers, keeps local venvs, and skips the Node reinstall path when the expected `node_modules/.bin/*` launchers already exist.
+
+That runtime is intentionally local-only and should not be committed.

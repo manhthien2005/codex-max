@@ -15,7 +15,7 @@ import codex_hook_adapter as adapter
 
 
 def _check_diary_sentinel() -> str | None:
-    sentinel = Path.home() / ".codex" / ".tmp" / "diary_pending"
+    sentinel = adapter.codex_root() / ".tmp" / "diary_pending"
     if not sentinel.exists():
         return None
     try:

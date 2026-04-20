@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-codex_hook_adapter.py — Windows-compatible hook adapter for Codex.
+codex_hook_adapter.py — Hook helpers for Codex, optimized for WSL/Linux.
 
-Detects platform and uses PowerShell on Windows, sh on Unix.
-Falls back gracefully if shell is not found.
+Windows fallbacks remain only for thin host-bridge compatibility and local
+test harnesses. The primary runtime target is `~/.codex` inside WSL.
 """
 from __future__ import annotations
 
@@ -17,6 +17,20 @@ from typing import Any
 
 HOOK_DIR = Path(__file__).resolve().parent
 IS_WINDOWS = sys.platform == "win32"
+
+
+def codex_root() -> Path:
+    env_root = os.environ.get("CODEX_HOME")
+    if env_root:
+        candidate = Path(env_root).expanduser()
+        if candidate.exists():
+            return candidate
+
+    repo_root = HOOK_DIR.parent
+    if (repo_root / "hooks").exists():
+        return repo_root
+
+    return Path.home() / ".codex"
 
 
 def load_payload() -> dict[str, Any]:
@@ -52,6 +66,22 @@ def parse_json(text: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         return {}
     return payload if isinstance(payload, dict) else {}
+
+
+def find_plan_file(root: Path) -> Path | None:
+    for name in ("task_plan.md", "PLANS.md"):
+        candidate = root / name
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def read_text_excerpt(path: Path, max_lines: int = 12) -> str:
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return ""
+    return "\n".join(lines[:max_lines]).strip()
 
 
 def _find_sh() -> str | None:
@@ -127,27 +157,39 @@ def _run_sh(sh_bin: str, script_path: Path, cwd: Path) -> tuple[str, str]:
 
 def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
     """Python-based fallback for common hook scripts when no shell is available."""
-    plan_file = cwd / "task_plan.md"
+    plan_file = find_plan_file(cwd)
     progress_file = cwd / "progress.md"
 
     if script_name in ("pre-tool-use.sh",):
-        # Plan dump removed — was injecting 30 lines before every Bash call
-        return '{"decision": "allow"}', ""
+        if plan_file:
+            excerpt = read_text_excerpt(plan_file, max_lines=16)
+            return json.dumps(
+                {
+                    "systemMessage": f"[planning-with-files] ACTIVE PLAN excerpt from {plan_file.name}:\n{excerpt}",
+                },
+                ensure_ascii=False,
+            ), ""
+        return "", ""
 
     elif script_name in ("post-tool-use.sh",):
-        # Reminder removed — was spamming context after every Bash call
+        if plan_file:
+            return (
+                "[planning-with-files] Update progress.md with what you just did. "
+                f"If a phase is complete, update {plan_file.name} status.",
+                "",
+            )
         return "", ""
 
     elif script_name in ("user-prompt-submit.sh",):
-        if plan_file.exists():
+        if plan_file:
             try:
                 plan = plan_file.read_text(encoding="utf-8", errors="replace").splitlines()
                 out = ["[planning-with-files] ACTIVE PLAN — current state:"]
-                out.extend(plan[:50])
+                out.extend(plan[:16])
                 if progress_file.exists():
                     prog = progress_file.read_text(encoding="utf-8", errors="replace").splitlines()
                     out.append("\n=== recent progress ===")
-                    out.extend(prog[-20:])
+                    out.extend(prog[-5:])
                 out.append("\n[planning-with-files] Read findings.md for research context. Continue from the current phase.")
                 return "\n".join(out), ""
             except OSError:
@@ -156,8 +198,7 @@ def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
 
     elif script_name in ("stop.sh",):
         # Gate 1: MemPalace diary sentinel
-        codex_root = HOOK_DIR.parent
-        sentinel = codex_root / ".tmp" / "diary_pending"
+        sentinel = codex_root() / ".tmp" / "diary_pending"
         if sentinel.exists():
             try:
                 ts = sentinel.read_text(encoding="utf-8", errors="replace").strip() or "unknown time"
@@ -177,7 +218,7 @@ def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
             )
             return json.dumps({"followup_message": msg}), ""
         # Gate 2: planning-with-files plan check
-        if plan_file.exists():
+        if plan_file:
             try:
                 content = plan_file.read_text(encoding="utf-8", errors="replace")
                 if "ALL PHASES COMPLETE" in content.upper() or "DONE" in content.upper():
@@ -190,17 +231,15 @@ def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
     elif script_name in ("session-start.sh",):
         # Create MemPalace diary sentinel
         import datetime
-        codex_root = HOOK_DIR.parent
-        tmp_dir = codex_root / ".tmp"
+        tmp_dir = codex_root() / ".tmp"
         try:
             tmp_dir.mkdir(parents=True, exist_ok=True)
             ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             (tmp_dir / "diary_pending").write_text(ts, encoding="utf-8")
+            (tmp_dir / "intelligence_restore_pending").write_text(ts, encoding="utf-8")
         except OSError:
             pass
-        # Run session-catchup.py only — do NOT call user-prompt-submit here
-        # (UserPromptSubmit hook fires separately; double-injection removed)
-        catchup_path = HOOK_DIR.parent / "skills" / "planning-with-files" / "scripts" / "session-catchup.py"
+        catchup_path = codex_root() / "skills" / "planning-with-files" / "scripts" / "session-catchup.py"
         catchup_out = ""
         if catchup_path.exists():
             result = subprocess.run(
@@ -212,11 +251,8 @@ def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
                 env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             )
             catchup_out = result.stdout.strip()
-        # Minimal session status
-        status = "[codex-max] Session ready."
-        if plan_file.exists():
-            status = f"[codex-max] Plan active. Session ready."
-        combined = "\n".join(filter(None, [catchup_out, status]))
+        prompt_out, _ = _run_python_fallback("user-prompt-submit.sh", cwd)
+        combined = "\n".join(filter(None, [catchup_out, prompt_out]))
         return combined, ""
 
     return "", ""

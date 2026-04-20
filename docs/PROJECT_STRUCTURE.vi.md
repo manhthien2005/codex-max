@@ -1,16 +1,10 @@
 # Cấu trúc dự án
 
-Tài liệu này mô tả cấu trúc làm việc thực tế của workspace Codex chi tiết hơn so với [`README.md`](../README.md).
-
-Nó tập trung vào:
-- các file source và cấu hình quan trọng,
-- các file chính nằm trong các thư mục quan trọng,
-- vai trò của từng vùng trong workspace,
-- phần nào là source vận hành, phần nào chỉ là local artifact.
+Tài liệu này mô tả bố cục WSL-first thực tế của workspace Codex.
 
 ---
 
-## Bố cục top-level
+## Top level
 
 ```text
 .
@@ -19,245 +13,117 @@ Nó tập trung vào:
 ├── hooks.json
 ├── README.md
 ├── README.vi.md
+├── .agents/
 ├── agents/
 ├── docs/
 ├── hooks/
-├── mcp/           ← gitignored, chỉ tồn tại cục bộ
+├── mcp/              ← gitignored, runtime cục bộ
+├── mcp_template/     ← template launcher/source MCP để publish
 ├── rules/
+├── scripts/
 ├── skills/
 └── vendor_imports/
 ```
 
-Workspace còn chứa nhiều thư mục vận hành cục bộ như cache, session, temp clone, và SQLite state. Các mục đó đã được loại trừ bởi [`.gitignore`](../.gitignore) và không thuộc clean publishable surface.
+## Các file runtime cốt lõi
 
----
+| Đường dẫn | Vai trò |
+|---|---|
+| [`AGENTS.md`](../AGENTS.md) | Contract vận hành |
+| [`config.toml`](../config.toml) | Cấu hình Codex WSL-first |
+| [`hooks.json`](../hooks.json) | Hook registration |
+| [`scripts/wsl-setup.sh`](../scripts/wsl-setup.sh) | Bootstrap và migrate WSL |
+| [`scripts/launch-codex-rtk.sh`](../scripts/launch-codex-rtk.sh) | Launcher chuẩn trong WSL |
+| [`scripts/launch-codex-rtk.ps1`](../scripts/launch-codex-rtk.ps1) | Bridge từ Windows host vào WSL |
 
-## Các file lõi ở root
+## Các bề mặt skill
 
-### [`AGENTS.md`](../AGENTS.md)
-Hợp đồng vận hành chính của workspace.
+### Thư viện source được tuyển chọn
 
-Nó định nghĩa:
-- protocol khởi động task,
-- active repo detection,
-- quy tắc an toàn multi-repo,
-- strategy nạp skill,
-- quy tắc sử dụng MCP,
-- format báo cáo.
+`skills/` vẫn là source of truth cho:
 
-### [`config.toml`](../config.toml)
-File cấu hình runtime Codex chính.
+- nội dung skill đã tuyển chọn,
+- `CATALOG.md`,
+- `manifest.yaml`,
+- maintainer-only workflows,
+- `.system` support skills nội bộ.
 
-Vai trò chính:
-- model và reasoning defaults,
-- approval và sandbox policy,
-- khai báo MCP server,
-- trusted project paths,
-- binding cho multi-agent role.
+### Bề mặt runtime để discover
 
-### [`hooks.json`](../hooks.json)
-File đăng ký hook cho lifecycle automation.
+`.agents/skills/` là bề mặt skill trong repo mà Codex nên discover khi chạy.
 
-Các event chính:
-- `SessionStart`
-- `UserPromptSubmit`
-- `PreToolUse`
-- `PostToolUse`
-- `Stop`
+Nó được tạo bởi [`scripts/sync-runtime-skills.sh`](../scripts/sync-runtime-skills.sh) dưới dạng mirror dùng symlink từ curated library.
 
-### [`README.md`](../README.md)
-Trang giới thiệu tiếng Anh của repository.
-
-### [`README.vi.md`](../README.vi.md)
-Trang giới thiệu tiếng Việt của repository.
-
----
-
-## Các thư mục chính
-
-## [`agents/`](../agents)
-Chứa định nghĩa các subagent role có thể tái sử dụng.
-
-Các file chính hiện tại:
+Bề mặt cấp user nằm tại:
 
 ```text
-agents/
-├── docs-researcher.toml
-├── explorer.toml
-└── reviewer.toml
+$HOME/.agents/skills -> ~/.codex/.agents/skills
 ```
 
-### Tóm tắt vai trò
-- [`agents/explorer.toml`](../agents/explorer.toml): role read-only để thu thập bằng chứng
-- [`agents/reviewer.toml`](../agents/reviewer.toml): role review cho correctness, security và regression checks
-- [`agents/docs-researcher.toml`](../agents/docs-researcher.toml): role xác minh tài liệu và API
+## Hooks
 
----
+`hooks/` giờ nhắm WSL/Linux làm runtime chính.
 
-## [`hooks/`](../hooks)
-Thư mục triển khai logic thực tế cho lifecycle hooks của workspace.
-
-Các file chính hiện tại:
+Các file chính:
 
 ```text
 hooks/
 ├── codex_hook_adapter.py
 ├── hook-probe.py
 ├── post_tool_use.py
-├── post-tool-use.ps1
 ├── pre_tool_use.py
-├── pre-tool-use.ps1
-├── session-start.ps1
-├── stop.ps1
+├── rtk-shell-init.sh
+├── session-start.sh
 ├── stop.py
-└── user-prompt-submit.ps1
+├── user-prompt-submit.sh
+└── user_prompt_submit.py
 ```
 
-### Nhóm chức năng
-- khởi động session: [`hooks/session-start.ps1`](../hooks/session-start.ps1)
-- inject context khi submit prompt: [`hooks/user-prompt-submit.ps1`](../hooks/user-prompt-submit.ps1)
-- kiểm tra trước khi dùng tool: [`hooks/pre_tool_use.py`](../hooks/pre_tool_use.py), [`hooks/pre-tool-use.ps1`](../hooks/pre-tool-use.ps1)
-- review sau khi dùng tool: [`hooks/post_tool_use.py`](../hooks/post_tool_use.py), [`hooks/post-tool-use.ps1`](../hooks/post-tool-use.ps1)
-- stop/finalization: [`hooks/stop.py`](../hooks/stop.py), [`hooks/stop.ps1`](../hooks/stop.ps1)
-- probe / chẩn đoán: [`hooks/hook-probe.py`](../hooks/hook-probe.py)
-- adapter hỗ trợ: [`hooks/codex_hook_adapter.py`](../hooks/codex_hook_adapter.py)
+Hành vi chính:
 
----
+- `SessionStart` tạo diary sentinel và chạy planning catch-up nếu có
+- `UserPromptSubmit` giờ phát JSON `hookSpecificOutput.additionalContext` qua `user_prompt_submit.py`; shell script chỉ còn là helper legacy/manual
+- `PreToolUse` và `PostToolUse` chỉ áp dụng cho Bash
+- `Stop` vẫn là diary gate
 
-## [`rules/`](../rules)
-Khu vực chứa rule asset của workspace.
+## Các bề mặt MCP
 
-File chính hiện tại:
+### Nguồn publish
+
+`mcp_template/` là source of truth được track trên git cho launcher cục bộ và adapter code.
+
+### Runtime cục bộ
+
+`mcp/` là machine-local và gitignored. Nó chứa:
+
+- Linux virtual environment,
+- launcher được copy từ `mcp_template/`,
+- cache cục bộ và Python entrypoint.
+
+Bootstrap bằng:
+
+```bash
+bash ~/.codex/scripts/bootstrap-mcp-wsl.sh
+```
+
+## Rules
+
+`rules/default.rules` là bề mặt rule WSL đang active.
+
+Allowlist Windows cũ đã được archive tại:
 
 ```text
-rules/
-└── default.rules
+rules/archive/windows-default.rules
 ```
 
-### Vai trò
-- lưu rule material mặc định mang tính policy cho workspace.
+## Runtime state cục bộ
 
----
+Các vùng sau vẫn cố ý không track:
 
-## [`skills/`](../skills)
-Bề mặt skill được tuyển chọn để tái sử dụng workflow.
+- `mcp/`
+- cache và model download
+- sessions và SQLite files
+- `.tmp/`
+- auth và machine-local state
 
-Các mục chính đang thấy gồm:
-
-```text
-skills/
-├── README.md
-├── CATALOG.md
-├── manifest.yaml
-├── workflow_bundles_readme.md
-├── _maintainers/
-│   ├── agent-sort/
-│   ├── manage-skills/
-│   └── strategic-compact/
-├── architecture-decision-records/
-├── brainstorming/
-├── browser-automation/
-├── codebase-onboarding/
-├── concise-planning/
-├── context7-auto-research/
-├── documentation-lookup/
-├── e2e-testing/
-├── gateguard/
-├── git-workflow/
-├── lint-and-validate/
-├── planning-with-files/
-├── search-first/
-├── security-auditor/
-├── security-review/
-├── systematic-debugging/
-├── task-intelligence/
-├── task-router-lite/
-├── test-driven-development/
-├── verification-before-completion/
-└── .system/
-```
-
-### Các nhóm skill quan trọng
-- [`skills/_maintainers/agent-sort/`](../skills/_maintainers/agent-sort): workflow maintainer-only để phân loại surface thành runtime, optional, maintainer-only, hoặc deferred
-- [`skills/_maintainers/manage-skills/`](../skills/_maintainers/manage-skills): workflow maintainer-only để quản lý cấu trúc curated skill library
-- [`skills/_maintainers/strategic-compact/`](../skills/_maintainers/strategic-compact): hướng dẫn maintainer-only cho logical context compaction trong các phiên curation dài
-- [`skills/architecture-decision-records/`](../skills/architecture-decision-records): ghi lại quyết định kiến trúc với context, alternative, và consequence
-- [`skills/brainstorming/`](../skills/brainstorming): làm rõ thiết kế và ý định trước khi implement
-- [`skills/browser-automation/`](../skills/browser-automation): workflow optional cho browser automation và scraping-oriented tasks
-- [`skills/codebase-onboarding/`](../skills/codebase-onboarding): workflow onboarding có cấu trúc cho repo chưa quen thuộc
-- [`skills/concise-planning/`](../skills/concise-planning): hỗ trợ planning gọn
-- [`skills/context7-auto-research/`](../skills/context7-auto-research): workflow optional như một alternative docs-current layer dựa trên Context7
-- [`skills/documentation-lookup/`](../skills/documentation-lookup): tra cứu docs hiện tại cho framework, library, và API
-- [`skills/e2e-testing/`](../skills/e2e-testing): workflow kiểm thử end-to-end cho user journey và browser flow
-- [`skills/gateguard/`](../skills/gateguard): pre-action gate buộc thu thập fact, đã được thích nghi với Bash-hook runtime hiện tại
-- [`skills/git-workflow/`](../skills/git-workflow): kỷ luật branch, commit, PR, merge, và release
-- [`skills/lint-and-validate/`](../skills/lint-and-validate): kỷ luật validation bắt buộc sau thay đổi
-- [`skills/planning-with-files/`](../skills/planning-with-files): planning workflow dựa trên markdown bền vững
-- [`skills/search-first/`](../skills/search-first): research-before-coding và kỷ luật chọn dependency/utility
-- [`skills/security-auditor/`](../skills/security-auditor): workflow optional cho security audit sâu hơn mức review thông thường
-- [`skills/security-review/`](../skills/security-review): workflow review bảo mật cho thay đổi rủi ro cao
-- [`skills/systematic-debugging/`](../skills/systematic-debugging): pattern debugging theo root-cause-first
-- [`skills/task-router-lite/`](../skills/task-router-lite): thin Phase PLAN router canonical cho curated runtime surface
-- [`skills/task-intelligence/`](../skills/task-intelligence): compatibility alias cũ để giữ các reference hiện tại trong lúc hành vi PLAN chuyển sang router mỏng
-- [`skills/test-driven-development/`](../skills/test-driven-development): workflow test-first cho thay đổi hành vi
-- [`skills/verification-before-completion/`](../skills/verification-before-completion): completion gate yêu cầu bằng chứng
-
-### Subtree hỗ trợ
-- [`skills/.system/`](../skills/.system): skill hỗ trợ nội bộ/hệ thống
-
----
-
-## [`vendor_imports/`](../vendor_imports)
-Vùng chứa material import từ nguồn vendor.
-
-Khu vực này nên được xem là imported support content hơn là vùng source chỉnh tay ưu tiên đầu tiên.
-
----
-
-## `mcp/` (gitignored)
-Thư mục binary và launcher script cho các MCP server cục bộ. Thư mục này **bị loại khỏi Git** vì chứa Python virtual environment (~305 MB) và đường dẫn tuyệt đối gắn với máy cụ thể.
-
-```text
-mcp/
-├── mempalace/
-│   └── run-mempalace-mcp.cmd
-├── qdrant/
-│   ├── run-qdrant-mcp.cmd
-│   └── Scripts/           ← Python venv (~305 MB)
-└── semantic/
-    ├── run-semantic-qdrant-stdio.cmd
-    └── semantic_qdrant_http.py
-```
-
-Xem [`docs/INSTALLATION.vi.md`](INSTALLATION.vi.md) phần 5 để biết hướng dẫn setup.
-
----
-
-## Các vùng vận hành cục bộ
-
-Các thư mục và file sau quan trọng cho runtime nhưng không thuộc clean publishable source layer:
-
-- temp clone và planning scratch
-- archived sessions và backup
-- cache và binary tạm
-- sandbox traces
-- session history
-- SQLite và state files
-- credential/auth artifact cục bộ theo máy
-
-Các mục này đã được exclude có chủ đích trong [`.gitignore`](../.gitignore).
-
----
-
-## Thứ tự nên đọc
-
-Nếu là người mới vào workspace, nên đọc theo thứ tự sau:
-
-1. [`AGENTS.md`](../AGENTS.md)
-2. [`config.toml`](../config.toml)
-3. [`hooks.json`](../hooks.json)
-4. [`agents/`](../agents)
-5. [`skills/`](../skills)
-6. [`README.md`](../README.md) hoặc [`README.vi.md`](../README.vi.md)
-
-Thứ tự này giúp có cả policy context lẫn implementation context mà không bị lẫn với runtime noise đã ignore.
+Xem [docs/INSTALLATION.vi.md](INSTALLATION.vi.md) để biết setup và verify.

@@ -2,229 +2,141 @@
 
 <div align="center">
 
-# AI Agent Workspace — Production-Grade Codex Configuration
+# AI Agent Workspace — WSL-First Codex Configuration
 
 <img src="https://github.com/user-attachments/assets/0fcfb1a2-5f0b-4450-95d0-d55c9da57d09" alt="Project Logo" width="300" />
 
-> Structured agent workflows, persistent context, curated skills, automation hooks, and multi-repo operational discipline for advanced Codex usage.
-
-<br/>
-
-**Production-oriented AI agent workspace for Codex and adjacent agent tooling**
-
-This repository packages a disciplined working environment for AI-assisted software engineering: reusable agents, hardened operational rules, persistent planning patterns, session automation, local memory integrations, and supporting workspace conventions.
-
-<br/>
+> Curated Codex workflows, persistent planning, local MCP integrations, and a reproducible WSL runtime for multi-repo engineering work.
 
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue)](https://github.com/manhthien2005/codex-max/releases/tag/v1.0.0)
-![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4)
-![Shell](https://img.shields.io/badge/shell-cmd%20%2B%20PowerShell-2C2D72)
+![Platform](https://img.shields.io/badge/platform-WSL2%20Ubuntu-0F4C81)
+![Runtime](https://img.shields.io/badge/runtime-Windows%20host%20bridge%20%E2%86%92%20WSL-1F2937)
 ![Mode](https://img.shields.io/badge/focus-Codex%20Workspace-111827)
 
 </div>
 
 ---
 
-## Introduction
-
-This workspace is designed as a serious operational environment for agent-assisted software engineering. It is not intended to be a generic scratch directory. Instead, it provides a stable Codex-centered control plane with reusable roles, workflow automation, skill loading, and strict separation between reusable repository assets and machine-local runtime data.
-
----
-
 ## Overview
 
-This repository serves as a Codex-centric orchestration layer for daily engineering work. It combines hardened workflows, local code intelligence, semantic search, persistent memory, and project-specific configuration into a repeatable workspace.
+This repository is a Codex workspace, not a generic project template. It combines:
 
-### Core components
+- a strict operational contract in [`AGENTS.md`](AGENTS.md),
+- WSL-native Codex configuration in [`config.toml`](config.toml),
+- hook automation through [`hooks.json`](hooks.json) and [`hooks/`](hooks),
+- curated skills in [`skills/`](skills) with runtime discovery exposed through [`.agents/skills`](.agents/skills),
+- machine-local MCP launchers and venvs in `~/.codex/mcp/`, published from [`mcp_template/`](mcp_template),
+- local semantic search, GitNexus, and MemPalace integrations when their services are available.
 
-- **ECC-inspired workflow hardening** — structured rules, skills, hooks, and agent roles help keep planning, validation, review, and reporting consistent across tasks.
-- **GitNexus codebase indexing** — structural code navigation supports symbol lookup, dependency tracing, call graph analysis, and impact awareness for real project repositories.
-- **Ollama + Qdrant semantic search** — local embeddings and vector search enable concept-level code discovery without relying on external search infrastructure.
-- **MemPalace session memory** — persistent memory keeps project context, decisions, and technical notes available across sessions instead of losing them between runs.
-- **Project-local customization** — configuration can be adjusted per project, allowing each repository to have its own active rules, tools, MCP servers, and execution boundaries.
+The canonical runtime home is `~/.codex` inside WSL. The PowerShell launcher is only a thin handoff into that WSL runtime.
 
-### Core goals
+## Runtime Model
 
-- Maintain a repeatable Codex workspace that can run locally
-- Support multi-repo work with explicit boundaries
-- Combine workflow discipline with local code intelligence
-- Preserve useful project memory across sessions
-- Avoid pushing caches, session traces, temp clones, or local state
+### Canonical paths
 
----
-
-## How it Works
-
-### Request lifecycle
-
-Every user prompt flows through a layered stack before producing output:
-
-```
-User prompt
-    │
-    ├── [SessionStart hook] ──── creates the diary sentinel and restores planning context when planning files exist
-    │
-    ├── [UserPromptSubmit hook] ─ injects active planning context from task_plan.md
-    │
-    ├── [AGENTS.md] ─────────── agent reads operational contract:
-    │       └── identify active repo
-    │       └── load thin PLAN router (`task-router-lite`)
-    │       └── keep `task-intelligence` only as a compatibility alias
-    │       └── decide: direct execution or spawn subagent
-    │
-    ├── [Intelligence Layers] ── queried before generating any code:
-    │       └── MemPalace     → past decisions, architecture notes
-    │       └── Semantic search → related code by concept (Qdrant + Ollama)
-    │       └── GitNexus      → exact symbols, call graph, blast radius
-    │
-    ├── [Skills / Agent roles] ─ Phase BUILD: narrowest matching skill loaded
-    │
-    ├── [PreToolUse hook] ───── checks Bash tool calls against active plan/runtime rules
-    │
-    ├── Code generation + edits
-    │
-    ├── [PostToolUse hook] ──── reviews Bash tool output against plan
-    │
-    └── [Stop hook] ────────── blocks stop until diary and active-plan gates are satisfied
-```
+- Canonical Codex home: `~/.codex`
+- Repo-local runtime skills: `./.agents/skills`
+- User-scope runtime skills: `$HOME/.agents/skills`
+- Published MCP source: `./mcp_template`
+- Machine-local MCP runtime: `~/.codex/mcp`
 
 ### Intelligence layers
 
-| Layer | Role | When used |
+| Layer | Purpose | Requirement |
 |---|---|---|
-| **MemPalace** | Persistent cross-session memory | Past decisions, architecture context |
-| **Qdrant Semantic** | Vector similarity search over indexed code | Finding related code by concept/intent |
-| **GitNexus** | Structural code graph (symbols, deps, call graph) | Exact lookups, impact analysis |
-| **Context7** | Up-to-date library/framework docs | Before writing library-dependent code |
-| **GitHub MCP** | PR/issue access | Reviewing PRs, reading issues |
+| MemPalace | Persistent project memory | Local Python venv under `~/.codex/mcp/mempalace` |
+| Semantic search | Concept search across indexed code | Qdrant + Ollama + semantic adapter |
+| GitNexus | Structural code graph and impact lookup | Node/npm in WSL |
+| Context7 | Current library/framework docs | Remote MCP |
+| Exa | Web search | Remote MCP |
 
-### Data storage map
+The workspace now treats these layers as **lazy-degrade**. If a task does not need MemPalace or semantic search, their health is not a blocker.
 
-| Data | Location | Notes |
-|---|---|---|
-| Semantic vector index | Docker volume `qdrant_data` → `/qdrant/storage` | Re-index via `mcp_template/semantic/repo-index.py` (supports `--watch`) |
-| MemPalace drawers | `~/.mempalace/palace/chroma.sqlite3` | Survives reboots, ~ChromaDB |
-| MemPalace knowledge graph | `~/.mempalace/palace/knowledge_graph.sqlite3` | Structured facts (subject → predicate → object) |
-| GitNexus graph | `<repo>/.gitnexus/` per repo | 60–70 MB each, gitignored at repo level |
-| GitNexus global registry | `~/.gitnexus/registry.json` | Tracks all indexed repos |
-| ChromaDB ONNX model | `~/.cache/chroma/onnx_models/` | 166 MB, downloaded once |
-| Session hooks state | `./.sandbox/`, `./sessions/` | Local only, gitignored |
+## How Requests Flow
 
----
+1. Codex loads [`AGENTS.md`](AGENTS.md).
+2. Hooks from [`hooks.json`](hooks.json) run from `~/.codex/hooks/` when enabled.
+3. The agent identifies the active repo, related repos, write scope, and git scope.
+4. The PLAN phase routes through `task-router-lite`.
+5. The BUILD phase selects the narrowest matching skill from the runtime skill surface.
+6. Optional MCP layers are probed only when the task actually needs them.
 
-## Project Structure
+## Repository Layout
 
-This workspace is organized around a small number of core layers:
+- [`AGENTS.md`](AGENTS.md), [`config.toml`](config.toml), [`hooks.json`](hooks.json): runtime contract
+- [`agents/`](agents): reusable subagent roles
+- [`hooks/`](hooks): WSL hook implementations and adapters
+- [`skills/`](skills): curated source library, catalog, and maintainer material
+- [`.agents/`](.agents): repo-local runtime discovery surface
+- [`mcp_template/`](mcp_template): published WSL launcher/source templates
+- `mcp/`: ignored machine-local launchers, venvs, and caches
 
-- [`AGENTS.md`](AGENTS.md), [`config.toml`](config.toml), and [`hooks.json`](hooks.json) define the operational contract and runtime behavior
-- [`agents/`](agents) stores reusable subagent role definitions
-- [`hooks/`](hooks) contains lifecycle automation scripts
-- [`skills/`](skills) provides curated reusable workflows and operational knowledge
-- [`skills/CATALOG.md`](skills/CATALOG.md) and [`skills/manifest.yaml`](skills/manifest.yaml) track the installed skill surface and planned rollout state
-- [`rules/`](rules) stores additional workspace rule material
-- [`mcp_template/`](mcp_template) provides copy-ready launcher scripts and the semantic adapter source for setting up the local `mcp/` directory on a new machine
-- ignored local-only areas such as caches, sessions, SQLite state, sandbox traces, and temp clones remain outside the clean source surface
+Detailed structure guides:
 
-For the full structure reference, including the main files inside each important directory, open the English structure guide by default:
-
-- Default detailed guide: [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md)
-- Vietnamese version: [`docs/PROJECT_STRUCTURE.vi.md`](docs/PROJECT_STRUCTURE.vi.md)
-
----
+- [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
+- [docs/PROJECT_STRUCTURE.vi.md](docs/PROJECT_STRUCTURE.vi.md)
 
 ## Quick Start
 
-### 1. Open the workspace root
-Use this directory as the active Codex workspace so the runtime can detect:
+### 1. Keep the canonical home in WSL
 
-- [`AGENTS.md`](AGENTS.md)
-- [`config.toml`](config.toml)
-- [`hooks.json`](hooks.json)
-- [`agents/`](agents)
-- [`hooks/`](hooks)
-- [`skills/`](skills)
+Clone or migrate this repo so the active runtime home becomes:
 
-### 2. Read the operating contract
-Review [`AGENTS.md`](AGENTS.md) first. It defines:
-
-- active repo detection,
-- write-scope discipline,
-- Git-scope boundaries,
-- skill-loading flow,
-- MCP usage expectations,
-- reporting format.
-
-### 3. Review runtime configuration
-Inspect [`config.toml`](config.toml) to verify:
-
-- model defaults,
-- approval policy,
-- sandbox settings,
-- MCP server bindings,
-- multi-agent role configuration.
-
-### 4. Keep the workspace clean
-Review [`.gitignore`](.gitignore) before versioning this workspace. It already excludes machine-local artifacts such as caches, sessions, local databases, temporary clones, and sandbox traces.
-
----
-
-## How to Install
-
-> Full guide: [`docs/INSTALLATION.md`](docs/INSTALLATION.md) · Vietnamese: [`docs/INSTALLATION.vi.md`](docs/INSTALLATION.vi.md)
-
-### TL;DR — five things to do after cloning
-
-```powershell
-# 1. Clone to the correct path (Codex auto-detects this location)
-git clone https://github.com/manhthien2005/codex-max.git C:\Users\$env:USERNAME\.codex
-
-# 2. Replace all hardcoded paths that reference the original username
-Select-String -Path "C:\Users\$env:USERNAME\.codex\config.toml" -Pattern "MrThien"
-# Edit config.toml — replace every "MrThien" with your Windows username
-
-# 3. Bootstrap mcp/ from the included template (launchers + semantic adapter)
-$src = "C:\Users\$env:USERNAME\.codex\mcp_template"
-$dst = "C:\Users\$env:USERNAME\.codex\mcp"
-New-Item -Force -ItemType Directory "$dst\qdrant", "$dst\semantic", "$dst\mempalace"
-Copy-Item "$src\qdrant\*"    "$dst\qdrant\"
-Copy-Item "$src\semantic\*"  "$dst\semantic\"
-Copy-Item "$src\mempalace\*" "$dst\mempalace\"
-
-# 4. Install Python venv + dependencies for qdrant/semantic MCP servers
-python -m venv "$dst\qdrant"
-& "$dst\qdrant\Scripts\pip" install fastmcp qdrant-client mcp-server-qdrant
-
-# 5. Install gitnexus globally and pull the Ollama embedding model
-npm install -g gitnexus
-ollama pull qwen3-embedding:0.6b
+```bash
+/home/<your-user>/.codex
 ```
 
-The full guide covers all steps in detail, including:
-- prerequisites (Node.js ≥ 18, Python ≥ 3.10, PowerShell 5+, Docker Desktop, Ollama),
-- path replacement in `config.toml`,
-- setting up `mcp/` from `mcp_template/` (qdrant, mempalace, semantic search),
-- indexing your repos with `repo-index.py` (one-shot or `--watch` mode),
-- hook script verification,
-- post-install checklist with ready-to-run PowerShell commands.
+If your working copy is still under `/mnt/c/...`, run the WSL bootstrap once. It copies the workspace into `~/.codex` and configures the rest from there.
 
----
+### 2. Run the bootstrap
 
-## Author
+If the clone is already at `~/.codex`, run:
 
-<div align="center">
+```bash
+bash ~/.codex/scripts/wsl-setup.sh
+```
 
-<img src="https://avatars.githubusercontent.com/u/65497946?v=4" alt="Mr. Thien" width="96" style="border-radius: 50%;" />
+If you are migrating once from a Windows filesystem clone, run for example:
 
-## Mr. Thien
+```bash
+bash /mnt/c/Users/<your-user>/.codex/scripts/wsl-setup.sh
+```
 
-[![Facebook](https://img.shields.io/badge/Facebook-ThienPhanNoLife-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/ThienPhanNoLife/)
+The bootstrap:
 
-| Platform | Link |
-|---|---|
-| Facebook | [facebook.com/ThienPhanNoLife](https://www.facebook.com/ThienPhanNoLife/) |
+- migrates the repo into `~/.codex`,
+- installs or activates `nvm`, Node, Codex CLI, and RTK in WSL,
+- syncs the runtime skill surface into `.agents/skills` and `$HOME/.agents/skills`,
+- bootstraps `~/.codex/mcp` from `mcp_template/`,
+- skips Node MCP reinstalls when the expected local binaries already exist,
+- runs config and runtime verification.
 
-**Inspired by [Everything Claude Code (ECC)](https://github.com/affaan-m/everything-claude-code), [GitNexus](https://github.com/0xPlaygrounds/gitnexus), and [MemPalace](https://github.com/MemPalace/mempalace).**
+### 3. Launch Codex
 
-**Made with Mr. Thien**
+Inside WSL:
 
-</div>
+```bash
+bash ~/.codex/scripts/launch-codex-rtk.sh
+```
+
+From Windows PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\<your-user>\.codex\scripts\launch-codex-rtk.ps1
+```
+
+That PowerShell script only hands off into `~/.codex/scripts/launch-codex-rtk.sh` inside WSL.
+
+## Installation
+
+The full install and verification guide lives here:
+
+- [docs/INSTALLATION.md](docs/INSTALLATION.md)
+- [docs/INSTALLATION.vi.md](docs/INSTALLATION.vi.md)
+
+## Notes
+
+- `mcp/` stays local-only and gitignored.
+- Publish launcher or MCP source changes via [`mcp_template/`](mcp_template), not `mcp/`.
+- `skills/` remains the curated source library. `.agents/skills` is the runtime mirror that Codex discovers.
+- `github` MCP can stay configured without a token; verification reports it as `auth_missing` until `GITHUB_TOKEN` is exported.

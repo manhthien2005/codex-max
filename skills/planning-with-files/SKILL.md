@@ -21,7 +21,7 @@ hooks:
   Stop:
     - hooks:
         - type: command
-          command: "export SD=\"${CODEX_SKILL_ROOT:-$HOME/.codex/skills/planning-with-files}/scripts\"; powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$SD/check-complete.ps1\" 2>/dev/null || sh \"$SD/check-complete.sh\""
+          command: "export SD=\"${CODEX_SKILL_ROOT:-$HOME/.agents/skills/planning-with-files}/scripts\"; sh \"$SD/check-complete.sh\" 2>/dev/null || powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"$SD/check-complete.ps1\""
 metadata:
   version: "2.34.0"
 
@@ -37,7 +37,7 @@ Work like Manus: Use persistent markdown files as your "working memory on disk."
 
 ```bash
 # Linux/macOS (auto-detects python3 or python)
-$(command -v python3 || command -v python) ~/.codex/skills/planning-with-files/scripts/session-catchup.py "$(pwd)"
+$(command -v python3 || command -v python) "$HOME/.agents/skills/planning-with-files/scripts/session-catchup.py" "$(pwd)"
 ```
 
 ```powershell
@@ -53,12 +53,12 @@ If catchup report shows unsynced context:
 
 ## Important: Where Files Go
 
-- **Templates** are in `~/.codex/skills/planning-with-files/templates/`
+- **Templates** are in `$HOME/.agents/skills/planning-with-files/templates/`
 - **Your planning files** go in **your project directory**
 
 | Location | What Goes There |
 |----------|-----------------|
-| Skill directory (`~/.codex/skills/planning-with-files/`) | Templates, scripts, reference docs |
+| Skill directory (`$HOME/.agents/skills/planning-with-files/`) | Templates, scripts, reference docs |
 | Your project directory | `task_plan.md`, `findings.md`, `progress.md` |
 
 ## Quick Start

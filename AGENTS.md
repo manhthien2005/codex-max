@@ -14,16 +14,17 @@
 
 ## Intelligence Layer Protocol (Session Start)
 
-**At the start of EVERY session, call these in order:**
+**At the start of EVERY session:**
 
-1. **Create diary sentinel** — run this command immediately:
-   ```powershell
-   $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'; New-Item -Force "$HOME\.codex\.tmp\diary_pending" | Set-Content -Value $ts
+1. **Create diary sentinel** immediately:
+   ```bash
+   mkdir -p ~/.codex/.tmp && date '+%Y-%m-%d %H:%M:%S %z' > ~/.codex/.tmp/diary_pending
    ```
-   (Unix: `mkdir -p ~/.codex/.tmp && date > ~/.codex/.tmp/diary_pending`)
-2. `mempalace_status` — load palace overview (drawers, wings). Restores project context.
-3. `semantic://health` — verify Qdrant + Ollama are up before any semantic search.
-4. Only after confirming layers are up, proceed to answer the user request.
+2. Identify the active repo and whether the current task actually needs persistent memory or semantic search.
+3. Only probe optional intelligence layers when the task needs them:
+   - `mempalace_status` before relying on prior project memory
+   - `semantic://health` before semantic search
+4. If an optional layer is unavailable, warn briefly and continue unless the task is explicitly blocked on that layer.
 
 **Decision tree — which layer to use:**
 
@@ -40,7 +41,7 @@
 ---
 
 ## MemPalace (project-level persistent memory)
-- v3.3.1 installed. MCP server auto-starts via `run-mempalace-mcp.cmd`.
+- v3.3.1 installed. MCP server auto-starts via `run-mempalace-mcp.sh`.
 - **Palace path:** `~/.mempalace/palace` (Windows: `%USERPROFILE%\.mempalace\palace`)
 - **Backend:** ChromaDB (HNSW vectors) + SQLite KG (knowledge graph)
 - **ONNX model:** `all-MiniLM-L6-v2` (cached at `~/.cache/chroma/`, 166 MB)
@@ -59,7 +60,7 @@
 **Wings configured:** `projects`, `technical`, `decisions`, `debugging`, `architecture`, `context`, `references`
 
 **Protocol:**
-- Call `mempalace_status` at session start.
+- Call `mempalace_status` before relying on prior project context.
 - Before claiming a fact about the project, call `mempalace_search` or `mempalace_kg_query` FIRST.
 - After completing a task, call `mempalace_diary_write` to record what happened.
 - When architecture decisions are made, call `mempalace_add_drawer` with wing=`decisions`.
@@ -69,17 +70,15 @@
 > ⚠️ Hooks may not execute in all environments. The agent MUST self-enforce this protocol.
 
 **Session start — agent does this immediately:**
-```powershell
-# Windows
-$ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-New-Item -Force -Path "$HOME\.codex\.tmp" -ItemType Directory | Out-Null
-Set-Content -Path "$HOME\.codex\.tmp\diary_pending" -Value $ts
+```bash
+mkdir -p ~/.codex/.tmp
+date '+%Y-%m-%d %H:%M:%S %z' > ~/.codex/.tmp/diary_pending
 ```
 
 **Session end — agent does this BEFORE responding "done" or stopping:**
-1. Check if sentinel exists: `Test-Path "$HOME\.codex\.tmp\diary_pending"`
+1. Check if sentinel exists: `test -f ~/.codex/.tmp/diary_pending`
 2. If YES → call `mempalace_diary_write` with session summary
-3. Delete sentinel: `Remove-Item "$HOME\.codex\.tmp\diary_pending" -Force`
+3. Delete sentinel: `rm -f ~/.codex/.tmp/diary_pending`
 4. Only after deletion → session may end
 
 - If the session was trivial (no real work), diary entry may be: "No significant work this session."
@@ -99,7 +98,7 @@ Next steps: <or None>
 ---
 
 ## Semantic Search (code similarity)
-- MCP server `semantic_qdrant_http` auto-starts via `run-semantic-qdrant-stdio.cmd`.
+- MCP server `semantic_qdrant_http` auto-starts via `run-semantic-qdrant-stdio.sh`.
 - **Prerequisite:** Qdrant (`http://127.0.0.1:6333`, Docker) + Ollama (`http://127.0.0.1:11434`) must be running.
 - **Embedding model:** `qwen3-embedding:0.6b` via Ollama
 - **Chunk size:** 40 lines with 10-line overlap
@@ -145,7 +144,7 @@ Next steps: <or None>
 ## Main Agent Workflow (Task Manager)
 
 The initial Agent acts as a **Task Manager**. Its primary responsibility is to:
-1. Call `mempalace_status` + `semantic://health` (Intelligence Layer Protocol above)
+1. Probe `mempalace_status` and `semantic://health` only when the task needs those layers
 2. Identify the active repo and related repos
 3. Load the right skills for the task
 4. Decide whether to execute directly or spawn subagents
@@ -153,7 +152,9 @@ The initial Agent acts as a **Task Manager**. Its primary responsibility is to:
 ### Two-Phase Skill Strategy
 
 **Phase PLAN — Task Analysis & Briefing**
-- ALWAYS load `task-router-lite` skill (`~/.codex/skills/task-router-lite`) first when available.
+- ALWAYS load `task-router-lite` from the runtime skill surface first when available:
+  - repo-local: `./.agents/skills/task-router-lite`
+  - user-scope: `$HOME/.agents/skills/task-router-lite`
 - If legacy instructions or older workspace surfaces still reference `task-intelligence`, treat it as a compatibility alias to `task-router-lite`.
 - Use the PLAN router to:
   - identify active repo, related repos, write scope, and git scope
@@ -162,7 +163,9 @@ The initial Agent acts as a **Task Manager**. Its primary responsibility is to:
 - Do not fan-out into many skills or invoke missing orchestration scripts during PLAN.
 
 **Phase BUILD — Execution Skills Match**
-- After analyzing the task, search for the narrowest matching execution skill in `~/.codex/skills/`.
+- After analyzing the task, search for the narrowest matching execution skill in the active runtime surface:
+  - repo-local: `./.agents/skills/`
+  - user-scope fallback: `$HOME/.agents/skills/`
 - Match by task domain: e.g. `systematic-debugging` for bugs, `lint-and-validate` for code quality, `planning-with-files` for multi-step work, `verification-before-completion` before closing a task.
 - Available skill families:
   - `task-router-lite` — thin Phase PLAN router and canonical routing baseline
@@ -249,13 +252,14 @@ When active, hooks run automatically:
 | Hook | When | What it does |
 |:---|:---|:---|
 | `SessionStart` | Session open / resume | Creates `diary_pending` sentinel + restores plan context |
-| `UserPromptSubmit` | Every user message | Injects plan context into prompt |
+| `UserPromptSubmit` | Every user message | Injects plan context into prompt via JSON `additionalContext` |
 | `PreToolUse (Bash)` | Before any Bash tool | Warns if repo has no GitNexus index |
 | `PostToolUse (Bash)` | After any Bash tool | Reviews Bash output against plan |
 | `Stop` | Session end | Blocks if `diary_pending` exists (Gate 1) or plan incomplete (Gate 2) |
 
 - Hooks are defined in `~/.codex/hooks.json`
 - Hook scripts live in `~/.codex/hooks/`
+- This workspace targets WSL/Linux only. Windows PowerShell is kept only as a thin host bridge into the WSL launcher.
 - All hooks use `|| true` — silent failure is safe, the agent self-enforces
 
 ---
@@ -406,7 +410,7 @@ When working in a repo that is **not in the GitNexus indexed repos table above**
 
 ```powershell
 # One command — handles GitNexus, Qdrant check, and registry update:
-python ~/.codex/scripts/repo-onboard.py <repo-path>
+python3 ~/.codex/scripts/repo-onboard.py <repo-path>
 ```
 
 The script will:
