@@ -5,11 +5,8 @@ import codex_hook_adapter as adapter
 
 
 def main() -> None:
-    payload = adapter.load_payload()
-    root = adapter.cwd_from_payload(payload)
-    stdout, _ = adapter.run_shell_script("post-tool-use.sh", root)
-    if stdout:
-        adapter.emit_json({"systemMessage": stdout})
+    """Keep PostToolUse quiet; progress tracking is handled outside the hook."""
+    adapter.load_payload()
 
 
 if __name__ == "__main__":

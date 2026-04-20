@@ -153,21 +153,36 @@ The initial Agent acts as a **Task Manager**. Its primary responsibility is to:
 ### Two-Phase Skill Strategy
 
 **Phase PLAN — Task Analysis & Briefing**
-- ALWAYS load `task-intelligence` skill (`~/.codex/skills/task-intelligence`) first.
-- Use it to break down the task, estimate difficulty, map risks, and prepare execution context.
-- Do not search for other analysis skills — this is the hardcoded entry point.
+- ALWAYS load `task-router-lite` skill (`~/.codex/skills/task-router-lite`) first when available.
+- If legacy instructions or older workspace surfaces still reference `task-intelligence`, treat it as a compatibility alias to `task-router-lite`.
+- Use the PLAN router to:
+  - identify active repo, related repos, write scope, and git scope
+  - classify difficulty
+  - choose at most `0-1` primary execution skill and at most `0-1` optional secondary skill
+- Do not fan-out into many skills or invoke missing orchestration scripts during PLAN.
 
 **Phase BUILD — Execution Skills Match**
 - After analyzing the task, search for the narrowest matching execution skill in `~/.codex/skills/`.
 - Match by task domain: e.g. `systematic-debugging` for bugs, `lint-and-validate` for code quality, `planning-with-files` for multi-step work, `verification-before-completion` before closing a task.
 - Available skill families:
+  - `task-router-lite` — thin Phase PLAN router and canonical routing baseline
   - `planning-with-files` — long-running, multi-step, or high-context tasks; keeps state in persistent markdown
-  - `task-intelligence` — task breakdown, difficulty rating, risk mapping
   - `systematic-debugging` — structured debugging flow
   - `lint-and-validate` — code quality and validation
   - `verification-before-completion` — gate check before marking task as Done
+  - `search-first` — research-before-coding and dependency-choice discipline
+  - `documentation-lookup` — current docs lookup for libraries, frameworks, and APIs
+  - `gateguard` — fact-forcing pre-action gate; Bash enforcement in hooks, non-Bash enforcement in instructions/router
+  - `brainstorming` — design-first clarification for underspecified work before implementation
+  - `test-driven-development` — test-first behavior implementation for features, bugfixes, and refactors
+  - `codebase-onboarding` — structured onboarding for unfamiliar repositories and first-pass architecture understanding
+  - `architecture-decision-records` — record major technical decisions with context, alternatives, and consequences
+  - `git-workflow` — branch, commit, PR, merge, and release discipline
+  - `e2e-testing` — end-to-end user-journey verification and browser-flow discipline
+  - `security-review` — security-focused review for auth, secrets, endpoints, and sensitive data changes
   - `concise-planning` — lightweight planning for medium tasks
   - Workflow bundles in `skills/workflow_bundles_readme.md` — specialized for frontend, backend, DevOps, security, AI/ML, database, testing, docs
+- Legacy alias: `task-intelligence` — compatibility entrypoint only; do not expand it back into a fan-out orchestrator.
 - If creating a subagent: inject the found skills directly into the subagent brief.
 - If executing directly: load the skill into the main agent context.
 - Do not load many skills at once. Prefer the narrowest relevant skill.
@@ -244,6 +259,31 @@ When active, hooks run automatically:
 - All hooks use `|| true` — silent failure is safe, the agent self-enforces
 
 ---
+
+## RTK Terminal Discipline
+
+RTK is the terminal output optimizer for lane Bash. Use it to reduce token consumption on noisy commands.
+
+**Auto-route (prefix with `rtk`):**
+- `rtk git status` · `rtk git diff` · `rtk git log` · `rtk git show`
+- `rtk ls` · `rtk ls -la`
+- `rtk read <file>` (single file read)
+- `rtk pytest` · `rtk cargo test` · `rtk go test`
+- `rtk docker ps` · `rtk docker logs <container>`
+
+**Always raw (do NOT prefix with rtk):**
+- Composite shell: `cmd1 && cmd2`, `cmd | grep`, `cmd; cmd`
+- Machine-readable flags: `git status --porcelain`, `git diff --name-only`, `git rev-parse`, `-z`
+- Secret-bearing: `curl -H "Authorization: ..."`, `aws ...`
+- Interactive tools: `vim`, `ssh`, `psql`, `docker exec -it`
+- Multi-file reads: `cat a.txt b.txt`
+
+**If RTK output shows a tee/raw log exists:** read the raw log before re-running the same command.
+
+**RTK status:** Check `$CODEX_MAX_RTK_STATUS` — if `degraded`, fall back to manual prefix or raw commands.
+
+---
+
 
 ## ECC Agents (built-in subagent roles)
 

@@ -1,201 +1,116 @@
 # Skills Directory
 
-**Welcome to the skills folder!** This is where all 179+ specialized AI skills live.
+This directory is the curated runtime skill surface for this workspace.
+It is intentionally small, reviewable, and versioned with the repository.
+This repo does **not** ship the full upstream ECC or Antigravity libraries as part of the active runtime surface.
 
-## 🤔 What Are Skills?
+## Source of truth
 
-Skills are specialized instruction sets that teach AI assistants how to handle specific tasks. Think of them as expert knowledge modules that your AI can load on-demand.
+Two files define the current skill surface:
 
-**Simple analogy:** Just like you might consult different experts (a designer, a security expert, a marketer), skills let your AI become an expert in different areas when you need them.
+- `skills/CATALOG.md` — human-readable catalog for maintainers
+- `skills/manifest.yaml` — machine-readable manifest for installed and planned skills
 
----
+If a skill is not listed there, it should not be treated as part of the active curated bundle.
 
-## 📂 Folder Structure
+## Current installed runtime skills
 
-Each skill lives in its own folder with this structure:
+| Skill | Tier | Status | Purpose |
+|---|---|---|---|
+| `concise-planning` | daily | active | Lightweight planning for medium tasks |
+| `planning-with-files` | daily | active | Persistent file-based planning for multi-step work |
+| `systematic-debugging` | daily | active | Root-cause-first debugging workflow |
+| `lint-and-validate` | daily | active | Mandatory validation after code changes |
+| `search-first` | library | active | Research-before-coding and dependency-choice discipline |
+| `documentation-lookup` | library | active | Current docs lookup for libraries, frameworks, and APIs |
+| `gateguard` | library | active | Fact-forcing pre-action gate adapted to Bash-hook reality |
+| `brainstorming` | library | active | Design-first clarification before implementation |
+| `test-driven-development` | library | active | Test-first behavior implementation workflow |
+| `codebase-onboarding` | library | active | Structured onboarding workflow for unfamiliar repositories |
+| `architecture-decision-records` | library | active | ADR recording and decision-history discipline |
+| `git-workflow` | library | active | Branch, commit, PR, merge, and release discipline |
+| `e2e-testing` | library | active | End-to-end user-journey and browser verification workflow |
+| `security-review` | library | active | Security-focused review workflow for risky changes |
+| `task-router-lite` | daily | active | Thin Phase PLAN router that selects at most one primary and one optional secondary skill |
+| `task-intelligence` | daily | legacy alias | Compatibility entrypoint that now routes through the thin PLAN behavior |
+| `verification-before-completion` | daily | active | Evidence-first completion gate |
 
-```
+## Installed optional library skills
+
+| Skill | Status | Purpose |
+|---|---|---|
+| `browser-automation` | optional | Browser automation and scraping-oriented workflow |
+| `security-auditor` | optional | Deeper security audit workflow beyond standard security review |
+| `context7-auto-research` | optional | Alternative Context7-driven docs-current workflow |
+
+## Installed maintainer-only skills
+
+| Skill | Status | Purpose |
+|---|---|---|
+| `agent-sort` | maintainer-only | Evidence-backed curation workflow for sorting surfaces into runtime / optional / maintainer buckets |
+| `strategic-compact` | maintainer-only | Context compaction guidance for long curation or migration sessions |
+| `manage-skills` | maintainer-only | Structural management of the curated skill library |
+
+## Internal support assets
+
+| Path | Role |
+|---|---|
+| `.system/` | Internal workspace support assets; not a user-selectable skill |
+
+## How skills are used in this workspace
+
+- Skills are primarily loaded by the workspace contract in `AGENTS.md` and by the runtime decision flow.
+- Some skills act as mandatory discipline layers rather than optional convenience tools.
+- This repository does not treat marketplace-style `@skill-name` chat syntax as its primary contract.
+- New external skills should be reviewed, curated, and registered before becoming part of the runtime surface.
+
+## Directory structure
+
+```text
 skills/
-├── skill-name/              # Individual skill folder
-│   ├── SKILL.md             # Main skill definition (required)
-│   ├── scripts/             # Helper scripts (optional)
-│   ├── examples/            # Usage examples (optional)
-│   └── resources/           # Templates & resources (optional)
+├── .system/
+├── _maintainers/
+│   ├── agent-sort/
+│   ├── manage-skills/
+│   └── strategic-compact/
+├── architecture-decision-records/
+├── brainstorming/
+├── browser-automation/
+├── codebase-onboarding/
+├── concise-planning/
+├── context7-auto-research/
+├── documentation-lookup/
+├── e2e-testing/
+├── gateguard/
+├── git-workflow/
+├── lint-and-validate/
+├── planning-with-files/
+├── search-first/
+├── security-auditor/
+├── security-review/
+├── systematic-debugging/
+├── task-intelligence/
+├── task-router-lite/
+├── test-driven-development/
+├── verification-before-completion/
+├── CATALOG.md
+└── manifest.yaml
 ```
 
-**Key point:** Only `SKILL.md` is required. Everything else is optional!
+## Change policy
 
----
+- Keep exactly one canonical skill per capability.
+- Prefer hardening an existing native skill over importing a duplicate.
+- `task-router-lite` is the canonical Phase PLAN router.
+- `task-intelligence` remains only as a compatibility alias until all references migrate.
+- Optional skills are installed but should not automatically displace the core routing defaults.
+- Maintainer-only skills live under `skills/_maintainers/` and must not be auto-loaded for normal execution.
+- Any newly imported skill must update both `skills/CATALOG.md` and `skills/manifest.yaml` in the same change set.
+- Planned skills may be documented in the catalog before import, but they are not part of the active runtime until installed.
 
-## How to Use Skills
+## Planned next wave
 
-### Step 1: Make sure skills are installed
-Skills should be in your `.agent/skills/` directory (or `.claude/skills/`, `.gemini/skills/`, etc.)
+No additional import wave is currently scheduled in the curated roadmap.
+Optional and maintainer-only skills remain available without becoming part of the core routing path.
 
-### Step 2: Invoke a skill in your AI chat
-Use the `@` symbol followed by the skill name:
-
-```
-@brainstorming help me design a todo app
-```
-
-or
-
-```
-@stripe-integration add payment processing to my app
-```
-
-### Step 3: The AI becomes an expert
-The AI loads that skill's knowledge and helps you with specialized expertise!
-
----
-
-## Skill Categories
-
-### Creative & Design
-Skills for visual design, UI/UX, and artistic creation:
-- `@algorithmic-art` - Create algorithmic art with p5.js
-- `@canvas-design` - Design posters and artwork (PNG/PDF output)
-- `@frontend-design` - Build production-grade frontend interfaces
-- `@ui-ux-pro-max` - Professional UI/UX design with color, fonts, layouts
-- `@web-artifacts-builder` - Build modern web apps (React, Tailwind, Shadcn/ui)
-- `@theme-factory` - Generate themes for documents and presentations
-- `@brand-guidelines` - Apply Anthropic brand design standards
-- `@slack-gif-creator` - Create high-quality GIFs for Slack
-
-### Development & Engineering
-Skills for coding, testing, debugging, and code review:
-- `@test-driven-development` - Write tests before implementation (TDD)
-- `@systematic-debugging` - Debug systematically, not randomly
-- `@webapp-testing` - Test web apps with Playwright
-- `@receiving-code-review` - Handle code review feedback properly
-- `@requesting-code-review` - Request code reviews before merging
-- `@finishing-a-development-branch` - Complete dev branches (merge, PR, cleanup)
-- `@subagent-driven-development` - Coordinate multiple AI agents for parallel tasks
-
-### Documentation & Office
-Skills for working with documents and office files:
-- `@doc-coauthoring` - Collaborate on structured documents
-- `@docx` - Create, edit, and analyze Word documents
-- `@xlsx` - Work with Excel spreadsheets (formulas, charts)
-- `@pptx` - Create and modify PowerPoint presentations
-- `@pdf` - Handle PDFs (extract text, merge, split, fill forms)
-- `@internal-comms` - Draft internal communications (reports, announcements)
-- `@notebooklm` - Query Google NotebookLM notebooks
-
-### Planning & Workflow
-Skills for task planning and workflow optimization:
-- `@brainstorming` - Brainstorm and design before coding
-- `@writing-plans` - Write detailed implementation plans
-- `@planning-with-files` - File-based planning system (Manus-style)
-- `@executing-plans` - Execute plans with checkpoints and reviews
-- `@using-git-worktrees` - Create isolated Git worktrees for parallel work
-- `@verification-before-completion` - Verify work before claiming completion
-- `@using-superpowers` - Discover and use advanced skills
-
-### System Extension
-Skills for extending AI capabilities:
-- `@mcp-builder` - Build MCP (Model Context Protocol) servers
-- `@skill-creator` - Create new skills or update existing ones
-- `@writing-skills` - Tools for writing and validating skill files
-- `@dispatching-parallel-agents` - Distribute tasks to multiple agents
-
----
-
-## Finding Skills
-
-### Method 1: Browse this folder
-```bash
-ls skills/
-```
-
-### Method 2: Search by keyword
-```bash
-ls skills/ | grep "keyword"
-```
-
-### Method 3: Check the main README
-See the [main README](../README.md) for the complete list of all 179+ skills organized by category.
-
----
-
-## 💡 Popular Skills to Try
-
-**For beginners:**
-- `@brainstorming` - Design before coding
-- `@systematic-debugging` - Fix bugs methodically
-- `@git-pushing` - Commit with good messages
-
-**For developers:**
-- `@test-driven-development` - Write tests first
-- `@react-best-practices` - Modern React patterns
-- `@senior-fullstack` - Full-stack development
-
-**For security:**
-- `@ethical-hacking-methodology` - Security basics
-- `@burp-suite-testing` - Web app security testing
-
----
-
-## Creating Your Own Skill
-
-Want to create a new skill? Check out:
-1. [CONTRIBUTING.md](../CONTRIBUTING.md) - How to contribute
-2. [docs/contributors/skill-anatomy.md](../docs/contributors/skill-anatomy.md) - Skill structure guide
-3. `@skill-creator` - Use this skill to create new skills!
-
-**Basic structure:**
-```markdown
----
-name: my-skill-name
-description: "What this skill does"
----
-
-# Skill Title
-
-## Overview
-[What this skill does]
-
-## When to Use
-- Use when [scenario]
-
-## Instructions
-[Step-by-step guide]
-
-## Examples
-[Code examples]
-```
-
----
-
-## Documentation
-
-- **[Getting Started](../docs/users/getting-started.md)** - Quick start guide
-- **[Examples](../docs/contributors/examples.md)** - Real-world usage examples
-- **[FAQ](../docs/users/faq.md)** - Common questions
-- **[Visual Guide](../docs/users/visual-guide.md)** - Diagrams and flowcharts
-
----
-
-## 🌟 Contributing
-
-Found a skill that needs improvement? Want to add a new skill?
-
-1. Read [CONTRIBUTING.md](../CONTRIBUTING.md)
-2. Study existing skills in this folder
-3. Create your skill following the structure
-4. Submit a Pull Request
-
----
-
-## References
-
-- [Anthropic Skills](https://github.com/anthropic/skills) - Official Anthropic skills
-- [UI/UX Pro Max Skills](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) - Design skills
-- [Superpowers](https://github.com/obra/superpowers) - Original superpowers collection
-- [Planning with Files](https://github.com/OthmanAdi/planning-with-files) - Planning patterns
-- [NotebookLM](https://github.com/PleasePrompto/notebooklm-skill) - NotebookLM integration
-
----
-
-**Need help?** Check the [FAQ](../docs/users/faq.md) or open an issue on GitHub!
+See `skills/CATALOG.md` for the rollout view and `skills/manifest.yaml` for structured metadata.

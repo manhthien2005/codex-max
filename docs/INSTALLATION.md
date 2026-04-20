@@ -28,13 +28,12 @@ Before using this workspace, confirm the following are available on your machine
 | **Node.js ≥ 18** | Required for MCP servers (memory, playwright, sequential-thinking, gitnexus) |
 | **Python ≥ 3.10** | Required for hook scripts (`pre_tool_use.py`, `post_tool_use.py`, `stop.py`) |
 | **PowerShell 5+** | Available by default on Windows 11 |
-| **Git Bash or WSL** | Required for `.sh` hook scripts referenced in `hooks.json` |
 | **Codex CLI** | Installed and authenticated with your API key |
 | **Docker Desktop** | Required to run the local Qdrant vector database (`mcp/semantic`) |
 | **Ollama** | Required locally for semantic embeddings (pull `qwen3-embedding:0.6b`) |
 
 > [!NOTE]
-> The `hooks.json` hooks use `sh` (Bash syntax). On Windows, this requires **Git Bash** (bundled with Git for Windows) or **WSL**. Pure `cmd.exe` will not work for those hooks.
+> The current hook runtime for this workspace is PowerShell + Python first. No separate Bash shell is required for the active [`hooks.json`](hooks.json) configuration.
 
 ---
 
@@ -250,19 +249,15 @@ node "C:\Users\$env:USERNAME\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\
 ls "C:\Users\$env:USERNAME\.codex\hooks\"
 ```
 
-All scripts referenced by `hooks.json` must exist. Expected files:
-- `session-start.sh` (and optionally `.ps1`)
-- `user-prompt-submit.sh`
+All scripts referenced by `hooks.json` must exist. Expected active files:
+- `session-start.ps1`
+- `user-prompt-submit.ps1`
 - `pre_tool_use.py`
 - `post_tool_use.py`
 - `stop.py`
 
 > [!IMPORTANT]
-> The `hooks.json` hook commands use `sh` to run `.sh` scripts. This requires **Git Bash** to be installed and `sh` to be on the `PATH`. Test with:
-> ```powershell
-> sh --version
-> ```
-> If `sh` is not found, install [Git for Windows](https://gitforwindows.org/) and ensure the Git Bash `bin/` directory is on your `PATH`.
+> The current `hooks.json` configuration executes local PowerShell and Python entrypoints from the repository itself. Verify PowerShell and Python are available instead of checking for any separate Bash shell.
 
 ---
 
@@ -294,8 +289,8 @@ node --version
 # 5. Confirm python is available
 python --version
 
-# 6. Confirm sh (Git Bash) is available
-sh --version
+# 6. Confirm PowerShell hook entrypoints are invokable
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\$env:USERNAME\.codex\hooks\session-start.ps1"
 ```
 
 ---

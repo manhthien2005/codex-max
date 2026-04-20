@@ -62,13 +62,14 @@ Mọi prompt từ người dùng đều đi qua một stack phân lớp trước
 ```
 User prompt
     │
-    ├── [SessionStart hook] ──── nạp lại context plan từ PLANS.md
+    ├── [SessionStart hook] ──── tạo diary sentinel và nạp lại planning context khi có planning files
     │
-    ├── [UserPromptSubmit hook] ─ inject active plan context vào prompt
+    ├── [UserPromptSubmit hook] ─ inject planning context hiện hành từ task_plan.md vào prompt
     │
     ├── [AGENTS.md] ─────────── agent đọc operational contract:
     │       └── xác định active repo
-    │       └── nạp skill task-intelligence (Phase PLAN)
+    │       └── nạp thin PLAN router (`task-router-lite`)
+    │       └── giữ `task-intelligence` chỉ như compatibility alias
     │       └── quyết định: chạy trực tiếp hay spawn subagent
     │
     ├── [Intelligence Layers] ── tra cứu trước khi viết code:
@@ -78,13 +79,13 @@ User prompt
     │
     ├── [Skills / Agent roles] ─ Phase BUILD: nạp đúng skill hẹp nhất
     │
-    ├── [PreToolUse hook] ───── kiểm tra từng tool call so với plan
+    ├── [PreToolUse hook] ───── kiểm tra Bash tool call theo active plan/runtime rules
     │
     ├── Code generation + edits
     │
-    ├── [PostToolUse hook] ──── review tool output so với plan
+    ├── [PostToolUse hook] ──── review Bash tool output so với plan
     │
-    └── [Stop hook] ────────── lưu session state, ghi MemPalace diary
+    └── [Stop hook] ────────── chặn stop cho tới khi diary gate và active-plan gate được thoả mãn
 ```
 
 ### Các lớp Intelligence
@@ -119,6 +120,7 @@ Workspace này được tổ chức quanh một số lớp lõi chính:
 - [`agents/`](agents) lưu các định nghĩa role subagent có thể tái sử dụng
 - [`hooks/`](hooks) chứa các script tự động hóa theo vòng đời session
 - [`skills/`](skills) cung cấp workflow tái sử dụng và tri thức vận hành đã được tuyển chọn
+- [`skills/CATALOG.md`](skills/CATALOG.md) và [`skills/manifest.yaml`](skills/manifest.yaml) theo dõi skill surface đã cài và trạng thái rollout dự kiến
 - [`rules/`](rules) lưu rule material bổ sung cho workspace
 - [`mcp_template/`](mcp_template) cung cấp launcher script mẫu và source semantic adapter để cài đặt `mcp/` trên máy mới
 - các vùng local-only như cache, sessions, SQLite state, sandbox traces, và temp clones được giữ ngoài clean source surface
@@ -198,7 +200,7 @@ ollama pull qwen3-embedding:0.6b
 ```
 
 Hướng dẫn đầy đủ bao gồm chi tiết từng bước:
-- điều kiện tiên quyết (Node.js ≥ 18, Python ≥ 3.10, Docker Desktop, Ollama, Git Bash),
+- điều kiện tiên quyết (Node.js ≥ 18, Python ≥ 3.10, PowerShell 5+, Docker Desktop, Ollama),
 - thay đường dẫn trong `config.toml`,
 - setup `mcp/` từ `mcp_template/` (qdrant, mempalace, semantic search),
 - index repo với `repo-index.py` (one-shot hoặc `--watch` mode),

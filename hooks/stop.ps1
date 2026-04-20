@@ -3,6 +3,8 @@
 #   Gate 1: MemPalace diary sentinel must be cleared (diary written this session)
 #   Gate 2: task_plan.md must be complete (existing planning-with-files logic)
 
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 $CodexRoot  = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $TmpDir     = Join-Path $CodexRoot ".tmp"
 $SentinelFile = Join-Path $TmpDir "diary_pending"
@@ -45,12 +47,12 @@ if (-not $content) {
 }
 
 if ($content -match "ALL PHASES COMPLETE|COMPLETE.*ALL PHASES") {
-    $msg = "ALL PHASES COMPLETE — plan finished."
+    $msg = "ALL PHASES COMPLETE - plan finished."
     Write-Output (ConvertTo-Json @{ followup_message = $msg } -Compress)
 } else {
     $unchecked = ($content | Select-String -Pattern "\[ \]" -AllMatches).Matches.Count
     if ($unchecked -eq 0 -and $content -match "\[x\]") {
-        $msg = "ALL PHASES COMPLETE — all tasks checked off."
+        $msg = "ALL PHASES COMPLETE - all tasks checked off."
         Write-Output (ConvertTo-Json @{ followup_message = $msg } -Compress)
     } else {
         $msg = "Plan is still active ($unchecked unchecked items). Review task_plan.md before closing."

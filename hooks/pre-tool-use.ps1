@@ -1,13 +1,8 @@
-# pre-tool-use.ps1 - Windows hook: inject plan context before tool use
+# pre-tool-use.ps1 - Quiet Windows compatibility shim for PreToolUse.
 param()
-$planFile = Join-Path (Get-Location) "task_plan.md"
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 
-if (Test-Path $planFile) {
-    # Output plan to stderr so Codex adapter surfaces it as systemMessage
-    $lines = Get-Content $planFile | Select-Object -First 30
-    $lines | ForEach-Object { [Console]::Error.WriteLine($_) }
-}
-
-# Always allow tool use
+# Active PreToolUse checks live in hooks/pre_tool_use.py; do not dump plan context here.
 Write-Output '{"decision": "allow"}'
 exit 0

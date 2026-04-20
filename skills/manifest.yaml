@@ -1,0 +1,324 @@
+schema_version: 1
+updated_at: 2026-04-19
+workspace: codex-max
+
+skills:
+  - name: concise-planning
+    path: skills/concise-planning
+    tier: daily
+    status: active
+    origin: codex-max
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: internal
+    enforced_by: []
+    notes: Lightweight planning for medium tasks.
+
+  - name: planning-with-files
+    path: skills/planning-with-files
+    tier: daily
+    status: active
+    origin: codex-max
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: internal
+    enforced_by:
+      - AGENTS.md
+    notes: Persistent file-based planning for multi-step or high-context work.
+
+  - name: systematic-debugging
+    path: skills/systematic-debugging
+    tier: daily
+    status: active
+    origin: codex-max
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: internal
+    enforced_by:
+      - AGENTS.md
+    notes: Root-cause-first debugging workflow.
+
+  - name: lint-and-validate
+    path: skills/lint-and-validate
+    tier: daily
+    status: active
+    origin: codex-max
+    canonical: true
+    autoload: mandatory-after-code-change
+    compat_aliases: []
+    upstream_url: internal
+    enforced_by:
+      - AGENTS.md
+    notes: Validation gate after code changes.
+
+  - name: search-first
+    path: skills/search-first
+    tier: library
+    status: active
+    origin: ECC-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/search-first
+    enforced_by:
+      - AGENTS.md
+      - hooks/pre_tool_use.py
+    notes: Research-before-coding and dependency-choice discipline.
+
+  - name: documentation-lookup
+    path: skills/documentation-lookup
+    tier: library
+    status: active
+    origin: ECC-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/documentation-lookup
+    enforced_by:
+      - AGENTS.md
+      - task-router-lite
+    notes: Current docs lookup for libraries, frameworks, and APIs.
+
+  - name: gateguard
+    path: skills/gateguard
+    tier: library
+    status: active
+    origin: ECC-adapted
+    canonical: true
+    autoload: bash-pre-action-gate
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/gateguard
+    enforced_by:
+      - AGENTS.md
+      - hooks/pre_tool_use.py
+    notes: Fact-forcing pre-action gate adapted to Bash-hook reality.
+
+  - name: brainstorming
+    path: skills/brainstorming
+    tier: library
+    status: active
+    origin: Antigravity-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/brainstorming
+    enforced_by:
+      - AGENTS.md
+      - task-router-lite
+    notes: Design-first clarification before implementation.
+
+  - name: test-driven-development
+    path: skills/test-driven-development
+    tier: library
+    status: active
+    origin: Antigravity-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/test-driven-development
+    enforced_by:
+      - AGENTS.md
+      - task-router-lite
+    notes: Test-first behavior implementation workflow.
+
+  - name: codebase-onboarding
+    path: skills/codebase-onboarding
+    tier: library
+    status: active
+    origin: ECC-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/codebase-onboarding
+    enforced_by:
+      - AGENTS.md
+      - task-router-lite
+    notes: Structured onboarding workflow for unfamiliar repositories.
+
+  - name: architecture-decision-records
+    path: skills/architecture-decision-records
+    tier: library
+    status: active
+    origin: ECC-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/architecture-decision-records
+    enforced_by:
+      - AGENTS.md
+      - task-router-lite
+      - docs/adr/README.md
+    notes: ADR recording and decision-history discipline.
+
+  - name: git-workflow
+    path: skills/git-workflow
+    tier: library
+    status: active
+    origin: ECC-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/git-workflow
+    enforced_by:
+      - AGENTS.md
+      - task-router-lite
+    notes: Branch, commit, PR, merge, and release discipline.
+
+  - name: e2e-testing
+    path: skills/e2e-testing
+    tier: library
+    status: active
+    origin: ECC-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/e2e-testing
+    enforced_by:
+      - AGENTS.md
+      - task-router-lite
+    notes: End-to-end user-journey and browser verification workflow.
+
+  - name: security-review
+    path: skills/security-review
+    tier: library
+    status: active
+    origin: ECC-adapted
+    canonical: true
+    autoload: selective
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/security-review
+    enforced_by:
+      - AGENTS.md
+      - task-router-lite
+    notes: Security-focused review workflow for risky changes.
+
+  - name: browser-automation
+    path: skills/browser-automation
+    tier: library
+    status: optional
+    origin: Antigravity-adapted
+    canonical: true
+    autoload: manual-only
+    compat_aliases: []
+    upstream_url: internal
+    enforced_by: []
+    notes: Browser automation and scraping-oriented workflow.
+
+  - name: security-auditor
+    path: skills/security-auditor
+    tier: library
+    status: optional
+    origin: Antigravity-adapted
+    canonical: true
+    autoload: manual-only
+    compat_aliases: []
+    upstream_url: internal
+    enforced_by: []
+    notes: Deeper security audit workflow beyond standard security review.
+
+  - name: context7-auto-research
+    path: skills/context7-auto-research
+    tier: library
+    status: optional
+    origin: third-party-adapted
+    canonical: false
+    autoload: manual-only
+    compat_aliases: []
+    upstream_url: https://github.com/BenedictKing/context7-auto-research
+    enforced_by: []
+    notes: Optional alternative docs-current layer; should not displace documentation-lookup as the core default.
+
+  - name: task-router-lite
+    path: skills/task-router-lite
+    tier: daily
+    status: active
+    origin: codex-max
+    canonical: true
+    autoload: phase-plan-entrypoint
+    compat_aliases:
+      - task-intelligence
+    upstream_url: internal
+    enforced_by:
+      - AGENTS.md
+      - README.md
+      - README.vi.md
+    notes: Thin Phase PLAN router that selects at most one primary and one optional secondary skill.
+
+  - name: task-intelligence
+    path: skills/task-intelligence
+    tier: daily
+    status: legacy-alias
+    origin: codex-max
+    canonical: false
+    autoload: compatibility-only
+    compat_aliases:
+      - task-router-lite
+    upstream_url: internal
+    enforced_by:
+      - AGENTS.md
+      - README.md
+      - README.vi.md
+    notes: Legacy compatibility entrypoint that preserves older references while routing through task-router-lite behavior.
+
+  - name: verification-before-completion
+    path: skills/verification-before-completion
+    tier: daily
+    status: active
+    origin: codex-max
+    canonical: true
+    autoload: mandatory-before-completion
+    compat_aliases: []
+    upstream_url: internal
+    enforced_by:
+      - AGENTS.md
+    notes: Evidence-first completion gate.
+
+internal_assets:
+  - path: skills/.system
+    status: internal
+    notes: Workspace support assets; not a user-selectable skill.
+
+maintainer_skills:
+  - name: agent-sort
+    path: skills/_maintainers/agent-sort
+    tier: maintainer
+    status: maintainer-only
+    origin: ECC-adapted
+    canonical: true
+    autoload: manual-only
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/agent-sort
+    enforced_by:
+      - docs/maintainers/skills.md
+    notes: Evidence-backed curation workflow for sorting surfaces into runtime, optional, maintainer-only, or deferred buckets.
+
+  - name: strategic-compact
+    path: skills/_maintainers/strategic-compact
+    tier: maintainer
+    status: maintainer-only
+    origin: ECC-adapted
+    canonical: true
+    autoload: manual-only
+    compat_aliases: []
+    upstream_url: https://github.com/affaan-m/everything-claude-code/tree/main/skills/strategic-compact
+    enforced_by:
+      - docs/maintainers/skills.md
+    notes: Context compaction guidance for long curation or migration sessions.
+
+  - name: manage-skills
+    path: skills/_maintainers/manage-skills
+    tier: maintainer
+    status: maintainer-only
+    origin: Antigravity-adapted
+    canonical: true
+    autoload: manual-only
+    compat_aliases: []
+    upstream_url: https://github.com/sickn33/antigravity-awesome-skills/tree/main/skills/manage-skills
+    enforced_by:
+      - docs/maintainers/skills.md
+    notes: Structural management of the curated skill library.
+
+planned_skills: []

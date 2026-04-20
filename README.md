@@ -62,13 +62,14 @@ Every user prompt flows through a layered stack before producing output:
 ```
 User prompt
     │
-    ├── [SessionStart hook] ──── restores plan context from PLANS.md
+    ├── [SessionStart hook] ──── creates the diary sentinel and restores planning context when planning files exist
     │
-    ├── [UserPromptSubmit hook] ─ injects active plan context into the prompt
+    ├── [UserPromptSubmit hook] ─ injects active planning context from task_plan.md
     │
     ├── [AGENTS.md] ─────────── agent reads operational contract:
     │       └── identify active repo
-    │       └── load task-intelligence skill (Phase PLAN)
+    │       └── load thin PLAN router (`task-router-lite`)
+    │       └── keep `task-intelligence` only as a compatibility alias
     │       └── decide: direct execution or spawn subagent
     │
     ├── [Intelligence Layers] ── queried before generating any code:
@@ -78,13 +79,13 @@ User prompt
     │
     ├── [Skills / Agent roles] ─ Phase BUILD: narrowest matching skill loaded
     │
-    ├── [PreToolUse hook] ───── validates each tool call against active plan
+    ├── [PreToolUse hook] ───── checks Bash tool calls against active plan/runtime rules
     │
     ├── Code generation + edits
     │
-    ├── [PostToolUse hook] ──── reviews tool output against plan
+    ├── [PostToolUse hook] ──── reviews Bash tool output against plan
     │
-    └── [Stop hook] ────────── saves session state, writes MemPalace diary
+    └── [Stop hook] ────────── blocks stop until diary and active-plan gates are satisfied
 ```
 
 ### Intelligence layers
@@ -119,6 +120,7 @@ This workspace is organized around a small number of core layers:
 - [`agents/`](agents) stores reusable subagent role definitions
 - [`hooks/`](hooks) contains lifecycle automation scripts
 - [`skills/`](skills) provides curated reusable workflows and operational knowledge
+- [`skills/CATALOG.md`](skills/CATALOG.md) and [`skills/manifest.yaml`](skills/manifest.yaml) track the installed skill surface and planned rollout state
 - [`rules/`](rules) stores additional workspace rule material
 - [`mcp_template/`](mcp_template) provides copy-ready launcher scripts and the semantic adapter source for setting up the local `mcp/` directory on a new machine
 - ignored local-only areas such as caches, sessions, SQLite state, sandbox traces, and temp clones remain outside the clean source surface
@@ -198,7 +200,7 @@ ollama pull qwen3-embedding:0.6b
 ```
 
 The full guide covers all steps in detail, including:
-- prerequisites (Node.js ≥ 18, Python ≥ 3.10, Docker Desktop, Ollama, Git Bash),
+- prerequisites (Node.js ≥ 18, Python ≥ 3.10, PowerShell 5+, Docker Desktop, Ollama),
 - path replacement in `config.toml`,
 - setting up `mcp/` from `mcp_template/` (qdrant, mempalace, semantic search),
 - indexing your repos with `repo-index.py` (one-shot or `--watch` mode),

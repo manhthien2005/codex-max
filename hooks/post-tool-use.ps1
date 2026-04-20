@@ -1,7 +1,6 @@
-# post-tool-use.ps1 — Windows PowerShell version of post-tool-use.sh
-$planFile = Join-Path (Get-Location) "task_plan.md"
+# post-tool-use.ps1 — Quiet Windows compatibility shim for PostToolUse.
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$OutputEncoding = [Console]::OutputEncoding
 
-if (Test-Path $planFile) {
-    Write-Output "[planning-with-files] Update progress.md with what you just did. If a phase is now complete, update task_plan.md status."
-}
+# Progress reminders are handled by agent planning discipline, not hook output.
 exit 0

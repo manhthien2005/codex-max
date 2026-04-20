@@ -5,7 +5,7 @@
 # See docs/INSTALLATION.md for the full setup checklist.
 # ─────────────────────────────────────────────────────────────────────────────
 model = "gpt-5.4"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 personality = "pragmatic"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
@@ -33,8 +33,14 @@ trust_level = "trusted"
 [projects.'C:\Users\MrThien\.codex'] # ← EDIT: your .codex path
 trust_level = "trusted"
 
+[projects."/mnt/c/Users/MrThien"]
+trust_level = "trusted"
+
 [mcp_servers.context7]
 url = "https://mcp.context7.com/mcp"
+
+[mcp_servers.context7.tools."*"]
+approval_mode = "auto"
 
 [mcp_servers.github]
 url = "https://api.githubcopilot.com/mcp/"
@@ -43,40 +49,91 @@ bearer_token_env_var = "GITHUB_TOKEN"
 [mcp_servers.exa]
 url = "https://mcp.exa.ai/mcp"
 
+[mcp_servers.exa.tools."*"]
+approval_mode = "auto"
+
 [mcp_servers.memory]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-memory"]
 startup_timeout_sec = 30.0
+
+[mcp_servers.memory.tools."*"]
+approval_mode = "auto"
 
 [mcp_servers.playwright]
 command = "npx"
 args = ["-y", "@playwright/mcp@latest", "--extension"]
 startup_timeout_sec = 30.0
 
+[mcp_servers.playwright.tools."*"]
+approval_mode = "auto"
+
 [mcp_servers.sequential-thinking]
 command = "npx"
 args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
 startup_timeout_sec = 30.0
 
+[mcp_servers.sequential-thinking.tools."*"]
+approval_mode = "auto"
+
 [mcp_servers.gitnexus]
 command = "node"
-args = ['C:\Users\MrThien\AppData\Roaming\npm\node_modules\gitnexus\dist\cli\index.js', "mcp"] # ← EDIT: your npm global path
+args = ['C:\\Users\\MrThien\\AppData\\Roaming\\npm\\node_modules\\gitnexus\\dist\\cli\\index.js', "mcp"]
+
+[mcp_servers.gitnexus.tools."*"]
+approval_mode = "auto"
+
+[mcp_servers.gitnexus.tools.query]
+approval_mode = "approve"
+
+[mcp_servers.gitnexus.tools.context]
+approval_mode = "approve"
+
+[mcp_servers.gitnexus.tools.impact]
+approval_mode = "approve"
+
+[mcp_servers.gitnexus.tools.detect_changes]
+approval_mode = "approve"
+
+[mcp_servers.gitnexus.tools.route_map]
+approval_mode = "approve"
+
+[mcp_servers.gitnexus.tools.api_impact]
+approval_mode = "approve"
+
+[mcp_servers.gitnexus.tools.shape_check]
+approval_mode = "approve"
 
 [mcp_servers.qdrant]
-command = "C:\\Users\\MrThien\\.codex\\mcp\\qdrant\\run-qdrant-mcp.cmd" # ← EDIT
+command = "C:\\Users\\MrThien\\.codex\\mcp\\qdrant\\run-qdrant-mcp.cmd"
 args = []
 
+[mcp_servers.qdrant.tools."*"]
+approval_mode = "auto"
+
 [mcp_servers.semantic_qdrant_http]
-command = "C:\\Users\\MrThien\\.codex\\mcp\\semantic\\run-semantic-qdrant-stdio.cmd" # ← EDIT
+command = "C:\\Users\\MrThien\\.codex\\mcp\\semantic\\run-semantic-qdrant-stdio.cmd"
 args = []
 startup_timeout_sec = 60.0
 
+[mcp_servers.semantic_qdrant_http.tools."*"]
+approval_mode = "auto"
+
 [mcp_servers.mempalace]
-command = "C:\\Users\\MrThien\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd" # ← EDIT
+command = "C:\\Users\\MrThien\\.codex\\mcp\\mempalace\\run-mempalace-mcp.cmd"
 args = []
 startup_timeout_sec = 120.0
 
+[mcp_servers.mempalace.tools."*"]
+approval_mode = "auto"
+
 [mcp_servers.mempalace.tools.mempalace_status]
+approval_mode = "approve"
+
+[mcp_servers.mempalace.tools.mempalace_search]
+approval_mode = "approve"
+
+[mcp_servers.mempalace.tools.mempalace_diary_write]
 approval_mode = "approve"
 
 [profiles.strict]

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh .codex/hooks/session-start.sh 2>/dev/null || sh \"$HOME/.codex/hooks/session-start.sh\" 2>/dev/null || true",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File hooks/session-start.ps1",
             "statusMessage": "Loading planning context"
           }
         ]
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh .codex/hooks/user-prompt-submit.sh 2>/dev/null || sh \"$HOME/.codex/hooks/user-prompt-submit.sh\" 2>/dev/null || true"
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File hooks/user-prompt-submit.ps1"
           }
         ]
       }
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/pre_tool_use.py 2>/dev/null || python3 \"$HOME/.codex/hooks/pre_tool_use.py\" 2>/dev/null || true",
+            "command": "py -3 hooks/pre_tool_use.py || python hooks/pre_tool_use.py",
             "statusMessage": "Checking plan before Bash"
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/post_tool_use.py 2>/dev/null || python3 \"$HOME/.codex/hooks/post_tool_use.py\" 2>/dev/null || true",
+            "command": "py -3 hooks/post_tool_use.py || python hooks/post_tool_use.py",
             "statusMessage": "Reviewing Bash against plan"
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/stop.py 2>/dev/null || python3 \"$HOME/.codex/hooks/stop.py\" 2>/dev/null || true",
+            "command": "py -3 hooks/stop.py || python hooks/stop.py",
             "timeout": 30
           }
         ]

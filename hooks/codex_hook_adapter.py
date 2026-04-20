@@ -131,19 +131,11 @@ def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
     progress_file = cwd / "progress.md"
 
     if script_name in ("pre-tool-use.sh",):
-        output = '{"decision": "allow"}'
-        context = ""
-        if plan_file.exists():
-            try:
-                lines = plan_file.read_text(encoding="utf-8", errors="replace").splitlines()
-                context = "\n".join(lines[:30])
-            except OSError:
-                pass
-        return output, context
+        # Plan dump removed — was injecting 30 lines before every Bash call
+        return '{"decision": "allow"}', ""
 
     elif script_name in ("post-tool-use.sh",):
-        if plan_file.exists():
-            return "[planning-with-files] Update progress.md with what you just did. If a phase is now complete, update task_plan.md status.", ""
+        # Reminder removed — was spamming context after every Bash call
         return "", ""
 
     elif script_name in ("user-prompt-submit.sh",):
@@ -206,7 +198,8 @@ def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
             (tmp_dir / "diary_pending").write_text(ts, encoding="utf-8")
         except OSError:
             pass
-        # Run session-catchup.py then user-prompt-submit
+        # Run session-catchup.py only — do NOT call user-prompt-submit here
+        # (UserPromptSubmit hook fires separately; double-injection removed)
         catchup_path = HOOK_DIR.parent / "skills" / "planning-with-files" / "scripts" / "session-catchup.py"
         catchup_out = ""
         if catchup_path.exists():
@@ -219,9 +212,11 @@ def _run_python_fallback(script_name: str, cwd: Path) -> tuple[str, str]:
                 env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             )
             catchup_out = result.stdout.strip()
-        # Also run user-prompt-submit equivalent
-        prompt_out, _ = _run_python_fallback("user-prompt-submit.sh", cwd)
-        combined = "\n".join(filter(None, [catchup_out, prompt_out]))
+        # Minimal session status
+        status = "[codex-max] Session ready."
+        if plan_file.exists():
+            status = f"[codex-max] Plan active. Session ready."
+        combined = "\n".join(filter(None, [catchup_out, status]))
         return combined, ""
 
     return "", ""

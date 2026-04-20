@@ -102,26 +102,24 @@ Các file chính hiện tại:
 ```text
 hooks/
 ├── codex_hook_adapter.py
+├── hook-probe.py
 ├── post_tool_use.py
 ├── post-tool-use.ps1
-├── post-tool-use.sh
 ├── pre_tool_use.py
 ├── pre-tool-use.ps1
-├── pre-tool-use.sh
 ├── session-start.ps1
-├── session-start.sh
 ├── stop.ps1
 ├── stop.py
-├── user-prompt-submit.ps1
-└── user-prompt-submit.sh
+└── user-prompt-submit.ps1
 ```
 
 ### Nhóm chức năng
-- khởi động session: [`hooks/session-start.sh`](../hooks/session-start.sh), [`hooks/session-start.ps1`](../hooks/session-start.ps1)
-- inject context khi submit prompt: [`hooks/user-prompt-submit.sh`](../hooks/user-prompt-submit.sh), [`hooks/user-prompt-submit.ps1`](../hooks/user-prompt-submit.ps1)
-- kiểm tra trước khi dùng tool: [`hooks/pre_tool_use.py`](../hooks/pre_tool_use.py), [`hooks/pre-tool-use.sh`](../hooks/pre-tool-use.sh), [`hooks/pre-tool-use.ps1`](../hooks/pre-tool-use.ps1)
-- review sau khi dùng tool: [`hooks/post_tool_use.py`](../hooks/post_tool_use.py), [`hooks/post-tool-use.sh`](../hooks/post-tool-use.sh), [`hooks/post-tool-use.ps1`](../hooks/post-tool-use.ps1)
+- khởi động session: [`hooks/session-start.ps1`](../hooks/session-start.ps1)
+- inject context khi submit prompt: [`hooks/user-prompt-submit.ps1`](../hooks/user-prompt-submit.ps1)
+- kiểm tra trước khi dùng tool: [`hooks/pre_tool_use.py`](../hooks/pre_tool_use.py), [`hooks/pre-tool-use.ps1`](../hooks/pre-tool-use.ps1)
+- review sau khi dùng tool: [`hooks/post_tool_use.py`](../hooks/post_tool_use.py), [`hooks/post-tool-use.ps1`](../hooks/post-tool-use.ps1)
 - stop/finalization: [`hooks/stop.py`](../hooks/stop.py), [`hooks/stop.ps1`](../hooks/stop.ps1)
+- probe / chẩn đoán: [`hooks/hook-probe.py`](../hooks/hook-probe.py)
 - adapter hỗ trợ: [`hooks/codex_hook_adapter.py`](../hooks/codex_hook_adapter.py)
 
 ---
@@ -149,22 +147,59 @@ Các mục chính đang thấy gồm:
 ```text
 skills/
 ├── README.md
+├── CATALOG.md
+├── manifest.yaml
 ├── workflow_bundles_readme.md
+├── _maintainers/
+│   ├── agent-sort/
+│   ├── manage-skills/
+│   └── strategic-compact/
+├── architecture-decision-records/
+├── brainstorming/
+├── browser-automation/
+├── codebase-onboarding/
 ├── concise-planning/
+├── context7-auto-research/
+├── documentation-lookup/
+├── e2e-testing/
+├── gateguard/
+├── git-workflow/
 ├── lint-and-validate/
 ├── planning-with-files/
+├── search-first/
+├── security-auditor/
+├── security-review/
 ├── systematic-debugging/
 ├── task-intelligence/
+├── task-router-lite/
+├── test-driven-development/
 ├── verification-before-completion/
 └── .system/
 ```
 
 ### Các nhóm skill quan trọng
+- [`skills/_maintainers/agent-sort/`](../skills/_maintainers/agent-sort): workflow maintainer-only để phân loại surface thành runtime, optional, maintainer-only, hoặc deferred
+- [`skills/_maintainers/manage-skills/`](../skills/_maintainers/manage-skills): workflow maintainer-only để quản lý cấu trúc curated skill library
+- [`skills/_maintainers/strategic-compact/`](../skills/_maintainers/strategic-compact): hướng dẫn maintainer-only cho logical context compaction trong các phiên curation dài
+- [`skills/architecture-decision-records/`](../skills/architecture-decision-records): ghi lại quyết định kiến trúc với context, alternative, và consequence
+- [`skills/brainstorming/`](../skills/brainstorming): làm rõ thiết kế và ý định trước khi implement
+- [`skills/browser-automation/`](../skills/browser-automation): workflow optional cho browser automation và scraping-oriented tasks
+- [`skills/codebase-onboarding/`](../skills/codebase-onboarding): workflow onboarding có cấu trúc cho repo chưa quen thuộc
 - [`skills/concise-planning/`](../skills/concise-planning): hỗ trợ planning gọn
+- [`skills/context7-auto-research/`](../skills/context7-auto-research): workflow optional như một alternative docs-current layer dựa trên Context7
+- [`skills/documentation-lookup/`](../skills/documentation-lookup): tra cứu docs hiện tại cho framework, library, và API
+- [`skills/e2e-testing/`](../skills/e2e-testing): workflow kiểm thử end-to-end cho user journey và browser flow
+- [`skills/gateguard/`](../skills/gateguard): pre-action gate buộc thu thập fact, đã được thích nghi với Bash-hook runtime hiện tại
+- [`skills/git-workflow/`](../skills/git-workflow): kỷ luật branch, commit, PR, merge, và release
 - [`skills/lint-and-validate/`](../skills/lint-and-validate): kỷ luật validation bắt buộc sau thay đổi
 - [`skills/planning-with-files/`](../skills/planning-with-files): planning workflow dựa trên markdown bền vững
+- [`skills/search-first/`](../skills/search-first): research-before-coding và kỷ luật chọn dependency/utility
+- [`skills/security-auditor/`](../skills/security-auditor): workflow optional cho security audit sâu hơn mức review thông thường
+- [`skills/security-review/`](../skills/security-review): workflow review bảo mật cho thay đổi rủi ro cao
 - [`skills/systematic-debugging/`](../skills/systematic-debugging): pattern debugging theo root-cause-first
-- [`skills/task-intelligence/`](../skills/task-intelligence): phân tích task và định khung thực thi
+- [`skills/task-router-lite/`](../skills/task-router-lite): thin Phase PLAN router canonical cho curated runtime surface
+- [`skills/task-intelligence/`](../skills/task-intelligence): compatibility alias cũ để giữ các reference hiện tại trong lúc hành vi PLAN chuyển sang router mỏng
+- [`skills/test-driven-development/`](../skills/test-driven-development): workflow test-first cho thay đổi hành vi
 - [`skills/verification-before-completion/`](../skills/verification-before-completion): completion gate yêu cầu bằng chứng
 
 ### Subtree hỗ trợ

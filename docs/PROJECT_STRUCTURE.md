@@ -102,26 +102,24 @@ Current main files:
 ```text
 hooks/
 ├── codex_hook_adapter.py
+├── hook-probe.py
 ├── post_tool_use.py
 ├── post-tool-use.ps1
-├── post-tool-use.sh
 ├── pre_tool_use.py
 ├── pre-tool-use.ps1
-├── pre-tool-use.sh
 ├── session-start.ps1
-├── session-start.sh
 ├── stop.ps1
 ├── stop.py
-├── user-prompt-submit.ps1
-└── user-prompt-submit.sh
+└── user-prompt-submit.ps1
 ```
 
 ### Functional grouping
-- session startup: [`hooks/session-start.sh`](../hooks/session-start.sh), [`hooks/session-start.ps1`](../hooks/session-start.ps1)
-- prompt submission injection: [`hooks/user-prompt-submit.sh`](../hooks/user-prompt-submit.sh), [`hooks/user-prompt-submit.ps1`](../hooks/user-prompt-submit.ps1)
-- pre-tool checks: [`hooks/pre_tool_use.py`](../hooks/pre_tool_use.py), [`hooks/pre-tool-use.sh`](../hooks/pre-tool-use.sh), [`hooks/pre-tool-use.ps1`](../hooks/pre-tool-use.ps1)
-- post-tool review: [`hooks/post_tool_use.py`](../hooks/post_tool_use.py), [`hooks/post-tool-use.sh`](../hooks/post-tool-use.sh), [`hooks/post-tool-use.ps1`](../hooks/post-tool-use.ps1)
+- session startup: [`hooks/session-start.ps1`](../hooks/session-start.ps1)
+- prompt submission injection: [`hooks/user-prompt-submit.ps1`](../hooks/user-prompt-submit.ps1)
+- pre-tool checks: [`hooks/pre_tool_use.py`](../hooks/pre_tool_use.py), [`hooks/pre-tool-use.ps1`](../hooks/pre-tool-use.ps1)
+- post-tool review: [`hooks/post_tool_use.py`](../hooks/post_tool_use.py), [`hooks/post-tool-use.ps1`](../hooks/post-tool-use.ps1)
 - stop/finalization: [`hooks/stop.py`](../hooks/stop.py), [`hooks/stop.ps1`](../hooks/stop.ps1)
+- probe / diagnostics: [`hooks/hook-probe.py`](../hooks/hook-probe.py)
 - adapter support: [`hooks/codex_hook_adapter.py`](../hooks/codex_hook_adapter.py)
 
 ---
@@ -149,22 +147,59 @@ Current visible main items include:
 ```text
 skills/
 ├── README.md
+├── CATALOG.md
+├── manifest.yaml
 ├── workflow_bundles_readme.md
+├── _maintainers/
+│   ├── agent-sort/
+│   ├── manage-skills/
+│   └── strategic-compact/
+├── architecture-decision-records/
+├── brainstorming/
+├── browser-automation/
+├── codebase-onboarding/
 ├── concise-planning/
+├── context7-auto-research/
+├── documentation-lookup/
+├── e2e-testing/
+├── gateguard/
+├── git-workflow/
 ├── lint-and-validate/
 ├── planning-with-files/
+├── search-first/
+├── security-auditor/
+├── security-review/
 ├── systematic-debugging/
 ├── task-intelligence/
+├── task-router-lite/
+├── test-driven-development/
 ├── verification-before-completion/
 └── .system/
 ```
 
 ### Key skill directories
+- [`skills/_maintainers/agent-sort/`](../skills/_maintainers/agent-sort): maintainer-only curation workflow for classifying surfaces into runtime, optional, maintainer-only, or deferred buckets
+- [`skills/_maintainers/manage-skills/`](../skills/_maintainers/manage-skills): maintainer-only workflow for structurally managing the curated skill library
+- [`skills/_maintainers/strategic-compact/`](../skills/_maintainers/strategic-compact): maintainer-only guidance for logical context compaction during long curation sessions
+- [`skills/architecture-decision-records/`](../skills/architecture-decision-records): record architectural decisions with context, alternatives, and consequences
+- [`skills/brainstorming/`](../skills/brainstorming): design-first clarification before implementation
+- [`skills/browser-automation/`](../skills/browser-automation): optional browser automation and scraping-oriented workflow
+- [`skills/codebase-onboarding/`](../skills/codebase-onboarding): structured onboarding workflow for unfamiliar repositories
 - [`skills/concise-planning/`](../skills/concise-planning): lightweight planning support
+- [`skills/context7-auto-research/`](../skills/context7-auto-research): optional alternative docs-current workflow using Context7-style retrieval
+- [`skills/documentation-lookup/`](../skills/documentation-lookup): current docs lookup for frameworks, libraries, and APIs
+- [`skills/e2e-testing/`](../skills/e2e-testing): end-to-end user-journey and browser-flow verification workflow
+- [`skills/gateguard/`](../skills/gateguard): fact-forcing pre-action gate adapted to the current Bash-hook runtime
+- [`skills/git-workflow/`](../skills/git-workflow): branch, commit, PR, merge, and release discipline
 - [`skills/lint-and-validate/`](../skills/lint-and-validate): mandatory validation discipline after changes
 - [`skills/planning-with-files/`](../skills/planning-with-files): persistent markdown-based planning workflow
+- [`skills/search-first/`](../skills/search-first): research-before-coding and dependency-choice discipline
+- [`skills/security-auditor/`](../skills/security-auditor): optional deeper security audit workflow
+- [`skills/security-review/`](../skills/security-review): security-focused review workflow for risky changes
 - [`skills/systematic-debugging/`](../skills/systematic-debugging): root-cause-first debugging patterns
-- [`skills/task-intelligence/`](../skills/task-intelligence): task analysis and execution framing
+- [`skills/task-router-lite/`](../skills/task-router-lite): canonical thin Phase PLAN router for the curated runtime surface
+- [`skills/task-intelligence/`](../skills/task-intelligence): legacy compatibility alias that preserves older references while routing through the thin PLAN behavior
+- [`skills/test-driven-development/`](../skills/test-driven-development): test-first behavior implementation workflow
 - [`skills/verification-before-completion/`](../skills/verification-before-completion): completion gate with evidence requirement
 
 ### Support subtree
